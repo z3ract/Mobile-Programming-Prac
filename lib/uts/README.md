@@ -52,9 +52,10 @@ Aplikasi memiliki minimal 4 halaman yang saling terhubung melalui mekanisme navi
 
 ## 🚀 Cara Menjalankan Aplikasi
 
-### 1. Masuk ke direktori master repo
+### 1. Kloning Repositori GitHub
 ```bash
-cd "F:\TUGAS\SEMESTER 5\MOBILE PROGRAMMING PRAC\MODUL\TUGAS\master_repo"
+git clone https://github.com/z3ract/Mobile-Programming-Prac.git
+cd Mobile-Programming-Prac
 ```
 
 ### 2. Pasang Dependensi
