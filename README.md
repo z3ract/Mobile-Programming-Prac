@@ -1,6 +1,6 @@
-# 👋 Halo, Saya Ahmad Damar Amrullah! 🎉
+# Halo, Saya Ahmad Damar Amrullah!
 
-## 📋 Informasi Pribadi
+## Informasi Pribadi
 - **Nama**: Ahmad Damar Amrullah
 - **NIM**: 240605110220
 - **Kelas Praktikum**: E
