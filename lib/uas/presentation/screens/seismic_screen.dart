@@ -12,7 +12,8 @@ import '../widgets/bmkg_attribution_footer.dart';
 import '../widgets/glass_card.dart';
 import 'detail_gempa_screen.dart';
 
-/// Live BMKG TEWS seismic monitor with search filtering and Haversine distances.
+/// Cleanly structured BMKG TEWS seismic monitor with comfortable controls,
+/// segmented filter tabs, and aligned inline telemetry rows.
 class SeismicScreen extends StatefulWidget {
   final ValueChanged<int>? onNavigateTab;
 
@@ -53,9 +54,8 @@ class _SeismicScreenState extends State<SeismicScreen>
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 10),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
                     child: Column(
@@ -63,15 +63,13 @@ class _SeismicScreenState extends State<SeismicScreen>
                       children: [
                         Text(
                           'Aktivitas Seismik',
-                          style: AppTypography.headlineMd(
-                            color: AppColors.onSurface,
-                          ),
+                          style: AppTypography.headlineLg(),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 3),
                         Obx(() {
                           final region = atmosphereCtrl.activeRegion.value;
                           return Text(
-                            'BMKG TEWS • Jarak dari ${region.displayTitle}',
+                            'BMKG TEWS · Jarak diukur dari ${region.displayTitle}',
                             style: AppTypography.bodySm(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -81,75 +79,49 @@ class _SeismicScreenState extends State<SeismicScreen>
                     ),
                   ),
                   const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: () => widget.onNavigateTab?.call(2),
+                  _buildHeaderAction(
                     tooltip: 'Lihat di Peta',
-                    icon: const Icon(
-                      Icons.map_rounded,
-                      color: AppColors.tertiary,
-                    ),
-                    style: IconButton.styleFrom(
-                      backgroundColor:
-                          AppColors.surfaceContainerHigh.withValues(alpha: 0.6),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.1),
-                        ),
-                      ),
-                    ),
+                    icon: Icons.map_outlined,
+                    onTap: () => widget.onNavigateTab?.call(2),
                   ),
-                  const SizedBox(width: 6),
-                  IconButton(
-                    onPressed: () => seismicCtrl.refreshAll(force: true),
-                    tooltip: 'Muat ulang BMKG TEWS',
-                    icon: const Icon(
-                      Icons.refresh_rounded,
-                      color: AppColors.primary,
-                    ),
-                    style: IconButton.styleFrom(
-                      backgroundColor:
-                          AppColors.surfaceContainerHigh.withValues(alpha: 0.6),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.1),
-                        ),
-                      ),
-                    ),
+                  const SizedBox(width: 8),
+                  _buildHeaderAction(
+                    tooltip: 'Perbarui Data Gempa',
+                    icon: Icons.refresh_rounded,
+                    onTap: () => seismicCtrl.refreshAll(force: true),
                   ),
                 ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Container(
-                height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                height: 46,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceContainer.withValues(alpha: 0.8),
-                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08),
+                    color: Colors.white.withValues(alpha: 0.15),
                   ),
                 ),
                 child: Row(
                   children: [
                     const Icon(
                       Icons.search_rounded,
-                      size: 18,
+                      size: 19,
                       color: AppColors.onSurfaceVariant,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: TextField(
                         controller: seismicCtrl.searchController,
-                        style: AppTypography.bodySm(color: AppColors.onSurface),
-                        cursorColor: AppColors.primary,
+                        style: AppTypography.bodyMd(color: AppColors.onSurface),
+                        cursorColor: AppColors.onSurface,
                         decoration: InputDecoration(
-                          hintText: 'Filter berdasarkan wilayah atau pulau...',
-                          hintStyle: AppTypography.bodySm(
-                            color: AppColors.onSurfaceVariant,
+                          hintText: 'Cari wilayah, laut, atau pulau...',
+                          hintStyle: AppTypography.bodyMd(
+                            color: AppColors.onSurfaceMuted,
                           ),
                           border: InputBorder.none,
                           isDense: true,
@@ -160,12 +132,17 @@ class _SeismicScreenState extends State<SeismicScreen>
                     ),
                     Obx(
                       () => seismicCtrl.searchQuery.value.isNotEmpty
-                          ? GestureDetector(
+                          ? InkWell(
                               onTap: seismicCtrl.clearSearch,
-                              child: const Icon(
-                                Icons.close_rounded,
-                                size: 16,
-                                color: AppColors.onSurfaceVariant,
+                              borderRadius: BorderRadius.circular(16),
+                              child: const SizedBox(
+                                width: 32,
+                                height: 32,
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  size: 18,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
                               ),
                             )
                           : const SizedBox.shrink(),
@@ -174,36 +151,39 @@ class _SeismicScreenState extends State<SeismicScreen>
                 ),
               ),
             ),
+            const SizedBox(height: 12),
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              height: 46,
+              margin: const EdgeInsets.symmetric(horizontal: 18),
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                color: Colors.black.withValues(alpha: 0.24),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
               ),
               child: TabBar(
                 controller: _tabController,
                 indicatorSize: TabBarIndicatorSize.tab,
                 dividerColor: Colors.transparent,
                 indicator: BoxDecoration(
-                  color: AppColors.surfaceBright.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(14),
+                  color: Colors.white.withValues(alpha: 0.20),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.15),
+                    color: Colors.white.withValues(alpha: 0.22),
                   ),
                 ),
                 labelColor: AppColors.onSurface,
-                unselectedLabelColor: AppColors.onSurfaceVariant,
+                unselectedLabelColor: AppColors.onSurfaceMuted,
                 labelStyle: AppTypography.bodySm().copyWith(
                   fontWeight: FontWeight.w600,
                 ),
                 tabs: const [
-                  Tab(text: 'Gempa M 5.0+'),
-                  Tab(text: 'Gempa Dirasakan (MMI)'),
+                  Tab(text: 'Magnitudo 5.0+'),
+                  Tab(text: 'Dirasakan (MMI)'),
                 ],
               ),
             ),
+            const SizedBox(height: 10),
             Expanded(
               child: TabBarView(
                 controller: _tabController,
@@ -229,6 +209,31 @@ class _SeismicScreenState extends State<SeismicScreen>
     );
   }
 
+  Widget _buildHeaderAction({
+    required String tooltip,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.11),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+          ),
+          child: Icon(icon, size: 19, color: AppColors.onSurface),
+        ),
+      ),
+    );
+  }
+
   Widget _buildListTab({
     required SeismicController seismicCtrl,
     required AtmosphereController atmosphereCtrl,
@@ -240,7 +245,7 @@ class _SeismicScreenState extends State<SeismicScreen>
           seismicCtrl.gempaTerkini.isEmpty &&
           seismicCtrl.gempaDirasakan.isEmpty) {
         return const Center(
-          child: CircularProgressIndicator(color: AppColors.primaryContainer),
+          child: CircularProgressIndicator(color: AppColors.onSurface),
         );
       }
 
@@ -257,12 +262,12 @@ class _SeismicScreenState extends State<SeismicScreen>
                 const Icon(
                   Icons.search_off_rounded,
                   size: 40,
-                  color: AppColors.onSurfaceVariant,
+                  color: AppColors.onSurfaceMuted,
                 ),
                 const SizedBox(height: 10),
                 Text(
                   seismicCtrl.errorMessage.value ??
-                      'Tidak ditemukan data gempa.',
+                      'Tidak ditemukan data gempa yang sesuai.',
                   textAlign: TextAlign.center,
                   style: AppTypography.bodyMd(
                     color: AppColors.onSurfaceVariant,
@@ -276,10 +281,10 @@ class _SeismicScreenState extends State<SeismicScreen>
 
       return RefreshIndicator(
         onRefresh: () => seismicCtrl.refreshAll(force: true),
-        color: AppColors.primaryContainer,
+        color: AppColors.onSurface,
         backgroundColor: AppColors.surfaceContainerHigh,
         child: ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 108),
+          padding: const EdgeInsets.fromLTRB(18, 4, 18, 112),
           physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics(),
           ),
@@ -315,9 +320,12 @@ class _SeismicScreenState extends State<SeismicScreen>
   }) {
     final magColor = AppColors.getMagnitudeColor(gempa.magnitudeValue);
     final distanceKm = seismicCtrl.distanceFromActiveRegionKm(gempa);
+    final statusLabel =
+        gempa.hasTsunamiPotential ? 'Waspada Tsunami' : 'Tidak Tsunami';
 
     return GlassCard(
       margin: const EdgeInsets.only(bottom: 12),
+      borderRadius: 22,
       padding: const EdgeInsets.all(16),
       onTap: () {
         Navigator.push(
@@ -339,12 +347,12 @@ class _SeismicScreenState extends State<SeismicScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 52,
-                height: 52,
+                width: 54,
+                height: 54,
                 decoration: BoxDecoration(
                   color: magColor.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: magColor.withValues(alpha: 0.4)),
+                  border: Border.all(color: magColor.withValues(alpha: 0.45)),
                 ),
                 alignment: Alignment.center,
                 child: Column(
@@ -352,22 +360,18 @@ class _SeismicScreenState extends State<SeismicScreen>
                   children: [
                     Text(
                       gempa.magnitude,
-                      style: TextStyle(
-                        color: magColor,
-                        fontSize: 15,
+                      style: AppTypography.tabularSm(color: magColor).copyWith(
+                        fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        height: 1.0,
+                        height: 1.05,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'SR',
-                      style: TextStyle(
-                        color: magColor.withValues(alpha: 0.8),
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        height: 1.0,
-                      ),
+                      style: AppTypography.labelCompact(
+                        color: magColor.withValues(alpha: 0.85),
+                      ).copyWith(fontSize: 9.5, fontWeight: FontWeight.w700),
                     ),
                   ],
                 ),
@@ -379,93 +383,117 @@ class _SeismicScreenState extends State<SeismicScreen>
                   children: [
                     Text(
                       gempa.wilayah,
-                      style: AppTypography.bodyMd(color: AppColors.onSurface)
-                          .copyWith(fontWeight: FontWeight.w600),
+                      style: AppTypography.bodyLg(color: AppColors.onSurface)
+                          .copyWith(fontSize: 14.5, height: 1.3),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.access_time_rounded,
-                          size: 12,
-                          color: AppColors.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            '${gempa.tanggal} • ${gempa.jam}',
-                            style: AppTypography.labelCompact(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 5),
+                    Text(
+                      '${gempa.tanggal} · ${gempa.jam}',
+                      style: AppTypography.tabularSm(
+                        color: AppColors.onSurfaceMuted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 6),
               const Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.onSurfaceVariant,
+                color: AppColors.onSurfaceMuted,
                 size: 20,
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
+          Divider(color: Colors.white.withValues(alpha: 0.10), height: 1),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
+          Row(
             children: [
-              _buildBadge(
-                icon: Icons.compress_rounded,
-                label: 'Kedalaman: ${gempa.kedalaman}',
+              Expanded(
+                child: _buildMetricCell(
+                  label: 'Kedalaman',
+                  value: gempa.kedalaman,
+                  color: AppColors.onSurface,
+                ),
               ),
-              if (distanceKm != null)
-                _buildBadge(
-                  icon: Icons.near_me_rounded,
-                  label:
-                      '${MeteorologyCalculator.formatDistance(distanceKm)} dari ${activeRegion.displayTitle}',
+              _buildVerticalRule(),
+              Expanded(
+                child: _buildMetricCell(
+                  label: 'Jarak',
+                  value: distanceKm != null
+                      ? MeteorologyCalculator.formatDistance(distanceKm)
+                      : '-',
                   color: AppColors.tertiary,
                 ),
+              ),
+              _buildVerticalRule(),
+              Expanded(
+                child: _buildMetricCell(
+                  label: 'Potensi',
+                  value: statusLabel,
+                  color: gempa.hasTsunamiPotential
+                      ? AppColors.accentRose
+                      : AppColors.accentEmerald,
+                ),
+              ),
             ],
           ),
+          if (gempa.dirasakan != null &&
+              gempa.dirasakan!.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'MMI: ${gempa.dirasakan}',
+              style: AppTypography.labelCompact(
+                color: AppColors.onSurfaceVariant,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildBadge({
-    required IconData icon,
+  Widget _buildMetricCell({
     required String label,
-    Color color = AppColors.onSurfaceVariant,
+    required String value,
+    required Color color,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              label,
-              style: AppTypography.labelCompact(color: color),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTypography.labelCompact(color: AppColors.onSurfaceMuted)
+              .copyWith(fontSize: 10.5),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: AppTypography.tabularSm(color: color).copyWith(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
           ),
-        ],
-      ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVerticalRule() {
+    return Container(
+      width: 1,
+      height: 24,
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      color: Colors.white.withValues(alpha: 0.10),
     );
   }
 }

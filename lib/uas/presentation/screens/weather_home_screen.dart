@@ -9,21 +9,27 @@ import '../../domain/utils/meteorology_calculator.dart';
 import '../../infrastructure/config/bmkg_api_config.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
-import '../theme/atmosphere_theme_strategy.dart';
 import '../widgets/bmkg_attribution_footer.dart';
 import '../widgets/daily_forecast_card.dart';
 import '../widgets/dynamic_condition_banner.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/hourly_forecast_strip.dart';
 import '../widgets/weather_bento_grid.dart';
+import '../widgets/weather_condition_icon.dart';
 import 'detail_gempa_screen.dart';
 import 'location_manager_screen.dart';
 
-/// Primary weather & hazard overview screen powered by live BMKG ADM4 forecasts.
+/// Primary weather & hazard screen modeled on Awan's translucent sky hierarchy
+/// and powered 100% by live BMKG ADM4 forecasts.
 class WeatherHomeScreen extends StatelessWidget {
   final ValueChanged<int>? onNavigateTab;
+  final bool enableAmbientMotion;
 
-  const WeatherHomeScreen({super.key, this.onNavigateTab});
+  const WeatherHomeScreen({
+    super.key,
+    this.onNavigateTab,
+    this.enableAmbientMotion = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +52,7 @@ class WeatherHomeScreen extends StatelessWidget {
               alertCtrl.refreshNowcast(force: true),
             ]);
           },
-          color: AppColors.primaryContainer,
+          color: AppColors.onSurface,
           backgroundColor: AppColors.surfaceContainerHigh,
           child: Obx(() {
             final region = atmosphereCtrl.activeRegion.value;
@@ -55,14 +61,22 @@ class WeatherHomeScreen extends StatelessWidget {
             final isLoading = atmosphereCtrl.isLoading.value;
             final error = atmosphereCtrl.errorMessage.value;
             final gpsNotice = atmosphereCtrl.gpsNotice.value;
+            final useFahrenheit = atmosphereCtrl.useFahrenheit.value;
 
             return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 108),
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 112),
               physics: const AlwaysScrollableScrollPhysics(
                 parent: BouncingScrollPhysics(),
               ),
               children: [
-                _buildTopBar(context, atmosphereCtrl, alertCtrl, region),
+                _buildMinimalHeader(
+                  context,
+                  atmosphereCtrl,
+                  seismicCtrl,
+                  alertCtrl,
+                  region,
+                  useFahrenheit,
+                ),
                 if (favorites.length > 1) ...[
                   const SizedBox(height: 10),
                   _buildFavoriteChips(atmosphereCtrl, favorites, region),
@@ -75,21 +89,25 @@ class WeatherHomeScreen extends StatelessWidget {
                     message: gpsNotice,
                   ),
                 ],
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 if (forecast == null && isLoading)
                   const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 72),
+                    padding: EdgeInsets.symmetric(vertical: 84),
                     child: Center(
                       child: CircularProgressIndicator(
-                        color: AppColors.primaryContainer,
+                        color: AppColors.onSurface,
                       ),
                     ),
                   )
                 else if (forecast == null && error != null)
                   _buildErrorState(atmosphereCtrl, error)
                 else ...[
-                  _buildHeroSection(region, forecast),
-                  const SizedBox(height: 18),
+                  _buildHeroSection(
+                    atmosphereCtrl,
+                    region,
+                    forecast,
+                  ),
+                  const SizedBox(height: 20),
                   DynamicConditionBanner(
                     forecast: forecast,
                     matchingNowcasts: alertCtrl.matchingProvinceNowcasts,
@@ -102,17 +120,24 @@ class WeatherHomeScreen extends StatelessWidget {
                     HourlyForecastStrip(
                       slots: forecast.slots,
                       currentSlot: forecast.current,
+                      useFahrenheit: useFahrenheit,
                     ),
                     const SizedBox(height: 16),
-                    DailyForecastCard(daily: forecast.daily),
+                    DailyForecastCard(
+                      daily: forecast.daily,
+                      useFahrenheit: useFahrenheit,
+                    ),
                     const SizedBox(height: 16),
-                    WeatherBentoGrid(forecast: forecast),
+                    WeatherBentoGrid(
+                      forecast: forecast,
+                      useFahrenheit: useFahrenheit,
+                    ),
                     const SizedBox(height: 16),
                     BmkgAttributionFooter(
                       attributionText: forecast.sourceAttribution,
                       isFromCache: forecast.fromCache,
                       detailLabel:
-                          'Wilayah ADM4 ${region.adm4} • Analisis ${forecast.current.timeLabel}',
+                          'Wilayah ADM4 ${region.adm4} · Analisis ${forecast.current.timeLabel}',
                     ),
                   ] else
                     Padding(
@@ -130,17 +155,22 @@ class WeatherHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTopBar(
+  Widget _buildMinimalHeader(
     BuildContext context,
     AtmosphereController atmosphereCtrl,
+    SeismicController seismicCtrl,
     AlertController alertCtrl,
     RegionEntity region,
+    bool useFahrenheit,
   ) {
     final alertCount = alertCtrl.evaluatedAlerts.length;
+
     return Row(
       children: [
         Expanded(
-          child: GestureDetector(
+          child: InkWell(
+            key: const Key('weather_location_button'),
+            borderRadius: BorderRadius.circular(16),
             onTap: () {
               Navigator.push(
                 context,
@@ -149,30 +179,48 @@ class WeatherHomeScreen extends StatelessWidget {
                 ),
               );
             },
-            child: Container(
-              height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainer.withValues(alpha: 0.8),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
               child: Row(
                 children: [
                   const Icon(
-                    Icons.search_rounded,
-                    color: AppColors.onSurfaceVariant,
-                    size: 20,
+                    Icons.location_on_outlined,
+                    size: 18,
+                    color: AppColors.onSurface,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Expanded(
-                    child: Text(
-                      'Cari lokasi / ADM4 (${region.displayTitle})...',
-                      style: AppTypography.bodySm(
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                region.displayTitle,
+                                style: AppTypography.headlineLg(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 18,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '${region.kotkab} · ${region.adm4}',
+                          style: AppTypography.labelCompact(
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -181,80 +229,165 @@ class WeatherHomeScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        GestureDetector(
+        _buildCircleActionButton(
+          tooltip: 'Deteksi GPS',
           onTap: atmosphereCtrl.isResolvingGps.value
               ? null
               : atmosphereCtrl.detectGpsLocation,
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainer.withValues(alpha: 0.8),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            ),
-            child: atmosphereCtrl.isResolvingGps.value
-                ? const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.primary,
-                    ),
-                  )
-                : const Icon(
-                    Icons.my_location_rounded,
-                    color: AppColors.primary,
-                    size: 20,
+          child: atmosphereCtrl.isResolvingGps.value
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.onSurface,
                   ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        GestureDetector(
-          onTap: () => onNavigateTab?.call(3),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainer.withValues(alpha: 0.8),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                )
+              : const Icon(
+                  Icons.my_location_rounded,
+                  size: 18,
+                  color: AppColors.onSurface,
                 ),
-                child: const Icon(
-                  Icons.notifications_active_rounded,
-                  color: AppColors.secondary,
-                  size: 20,
+        ),
+        const SizedBox(width: 6),
+        _buildUnitTogglePill(atmosphereCtrl, useFahrenheit),
+        const SizedBox(width: 6),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            _buildCircleActionButton(
+              tooltip: 'Pusat Peringatan',
+              onTap: () => onNavigateTab?.call(3),
+              child: const Icon(
+                Icons.notifications_none_rounded,
+                size: 19,
+                color: AppColors.onSurface,
+              ),
+            ),
+            if (alertCount > 0)
+              Positioned(
+                right: 1,
+                top: 1,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 1.5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentRose,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$alertCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
-              if (alertCount > 0)
-                Positioned(
-                  right: -2,
-                  top: -2,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentRose,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '$alertCount',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+          ],
+        ),
+        const SizedBox(width: 6),
+        _buildCircleActionButton(
+          tooltip: 'Perbarui Data BMKG',
+          onTap: () {
+            atmosphereCtrl.refreshWeather(force: true);
+            seismicCtrl.refreshAll(force: true);
+            alertCtrl.refreshNowcast(force: true);
+          },
+          child: const Icon(
+            Icons.refresh_rounded,
+            size: 18,
+            color: AppColors.onSurface,
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCircleActionButton({
+    required String tooltip,
+    required VoidCallback? onTap,
+    required Widget child,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          width: 40,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.11),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUnitTogglePill(
+    AtmosphereController atmosphereCtrl,
+    bool useFahrenheit,
+  ) {
+    return Tooltip(
+      message: 'Ubah satuan suhu',
+      child: InkWell(
+        key: const Key('weather_unit_toggle'),
+        onTap: atmosphereCtrl.toggleTemperatureUnit,
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.11),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '°C',
+                style: AppTypography.labelCompact(
+                  color: useFahrenheit
+                      ? AppColors.onSurfaceMuted
+                      : AppColors.onSurface,
+                ).copyWith(
+                  fontWeight:
+                      useFahrenheit ? FontWeight.w400 : FontWeight.w700,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: Text(
+                  '/',
+                  style: AppTypography.labelCompact(
+                    color: Colors.white.withValues(alpha: 0.35),
+                  ),
+                ),
+              ),
+              Text(
+                '°F',
+                style: AppTypography.labelCompact(
+                  color: useFahrenheit
+                      ? AppColors.onSurface
+                      : AppColors.onSurfaceMuted,
+                ).copyWith(
+                  fontWeight:
+                      useFahrenheit ? FontWeight.w700 : FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -264,7 +397,7 @@ class WeatherHomeScreen extends StatelessWidget {
     RegionEntity active,
   ) {
     return SizedBox(
-      height: 34,
+      height: 36,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: favorites.length,
@@ -275,16 +408,16 @@ class WeatherHomeScreen extends StatelessWidget {
           return GestureDetector(
             onTap: () => atmosphereCtrl.selectRegion(fav),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppColors.primaryContainer.withValues(alpha: 0.25)
-                    : AppColors.surfaceContainer.withValues(alpha: 0.65),
-                borderRadius: BorderRadius.circular(16),
+                    ? Colors.white.withValues(alpha: 0.22)
+                    : Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(18),
                 border: Border.all(
                   color: isSelected
-                      ? AppColors.primary.withValues(alpha: 0.5)
-                      : Colors.white.withValues(alpha: 0.08),
+                      ? Colors.white.withValues(alpha: 0.40)
+                      : Colors.white.withValues(alpha: 0.12),
                 ),
               ),
               child: Row(
@@ -296,7 +429,7 @@ class WeatherHomeScreen extends StatelessWidget {
                         : Icons.location_on_rounded,
                     size: 13,
                     color: isSelected
-                        ? AppColors.primary
+                        ? AppColors.onSurface
                         : AppColors.onSurfaceVariant,
                   ),
                   const SizedBox(width: 5),
@@ -306,6 +439,9 @@ class WeatherHomeScreen extends StatelessWidget {
                       color: isSelected
                           ? AppColors.onSurface
                           : AppColors.onSurfaceVariant,
+                    ).copyWith(
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.w400,
                     ),
                   ),
                 ],
@@ -318,142 +454,94 @@ class WeatherHomeScreen extends StatelessWidget {
   }
 
   Widget _buildHeroSection(
+    AtmosphereController atmosphereCtrl,
     RegionEntity region,
     WeatherForecastEntity? forecast,
   ) {
     final slot = forecast?.current;
-    final theme = slot != null
-        ? AtmosphereThemeRegistry.resolveByWeatherCode(
-            slot.weatherCode,
-            fallbackDesc: slot.weatherDesc,
-            isNight: slot.isNightTime,
-          )
-        : AtmosphereThemeRegistry.resolveByWeatherCode(1);
+    final int tempValue =
+        slot != null ? atmosphereCtrl.convertTemp(slot.tempC) : 0;
+    final String tempDisplay = slot != null ? '$tempValue' : '--';
+    final String descText = slot?.weatherDesc ?? 'Memuat data BMKG...';
+    final String maxText = forecast != null
+        ? '${atmosphereCtrl.convertTemp(forecast.tempMaxTodayC)}°'
+        : '--';
+    final String minText = forecast != null
+        ? '${atmosphereCtrl.convertTemp(forecast.tempMinTodayC)}°'
+        : '--';
+    final String feelsText = forecast != null
+        ? '${atmosphereCtrl.convertTemp(forecast.feelsLikeC)}°'
+        : '--';
 
-    final tempText = slot != null ? '${slot.tempC.round()}°' : '--°';
-    final descText = slot?.weatherDesc ?? 'Memuat data BMKG...';
-    final maxText = forecast != null ? '${forecast.tempMaxTodayC.round()}°' : '--';
-    final minText = forecast != null ? '${forecast.tempMinTodayC.round()}°' : '--';
-    final feelsText =
-        forecast != null ? '${forecast.feelsLikeC.round()}°' : '--';
-
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          width: 240,
-          height: 140,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: theme.ambientGlowColor.withValues(alpha: 0.14),
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 4),
+      child: Column(
+        children: [
+          WeatherConditionIcon(
+            weatherCode: slot?.weatherCode ?? 1,
+            fallbackDesc: slot?.weatherDesc,
+            isNight: slot?.isNightTime ?? false,
+            size: 96,
+            animate: enableAmbientMotion,
           ),
-        ),
-        Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Flexible(
-                  child: Text(
-                    region.displayTitle,
-                    style: AppTypography.headlineLg(color: AppColors.onSurface),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(width: 14),
+              Text(tempDisplay, style: AppTypography.displayHero()),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  '°',
+                  style: AppTypography.displayHero(
+                    color: Colors.white.withValues(alpha: 0.85),
+                  ).copyWith(fontSize: 30, fontWeight: FontWeight.w300),
                 ),
-                const SizedBox(width: 6),
-                Icon(
-                  region.isGpsResolved
-                      ? Icons.near_me_rounded
-                      : Icons.public_rounded,
-                  size: 18,
-                  color: AppColors.tertiary,
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '${region.displaySubtitle} • ${region.provinsi}',
-              style: AppTypography.labelCompact(),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(theme.icon, size: 18, color: theme.accentColor),
-                const SizedBox(width: 6),
-                Text(
-                  descText,
-                  style: AppTypography.bodyMd(color: AppColors.onSurface),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Text(
-                tempText,
-                style: AppTypography.displayHero(color: AppColors.onSurface),
               ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Maks: $maxText  Min: $minText',
-                  style: AppTypography.bodySm(
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6),
-                  child: Text(
-                    '•',
-                    style: TextStyle(color: AppColors.outlineVariant),
-                  ),
-                ),
-                Text(
-                  'Terasa $feelsText',
-                  style: AppTypography.bodySm(
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerHigh.withValues(alpha: 0.78),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            descText,
+            style: AppTypography.headlineSm(color: AppColors.onSurface)
+                .copyWith(fontSize: 18, fontWeight: FontWeight.w500),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 10,
+            runSpacing: 4,
+            children: [
+              Text(
+                'Terasa $feelsText',
+                style: AppTypography.tabularSm(color: AppColors.onSurfaceSoft)
+                    .copyWith(fontSize: 13),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: theme.accentColor,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${theme.badgeLabel} • ADM4 ${region.adm4}',
-                    style: AppTypography.labelCompact(
-                      color: AppColors.onSurface,
-                    ),
-                  ),
-                ],
+              Text(
+                '·',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.45)),
               ),
-            ),
-          ],
-        ),
-      ],
+              Text(
+                'T: $maxText  R: $minText',
+                style: AppTypography.tabularSm(color: AppColors.onSurfaceSoft)
+                    .copyWith(fontSize: 13),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${region.kecamatan}, ${region.provinsi}',
+            style: AppTypography.labelCompact(color: AppColors.onSurfaceMuted),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 
@@ -469,9 +557,8 @@ class WeatherHomeScreen extends StatelessWidget {
     final distanceKm = seismicCtrl.distanceFromActiveRegionKm(gempa);
 
     return GlassCard(
-      borderRadius: 20,
+      borderRadius: 22,
       padding: const EdgeInsets.all(14),
-      backgroundColor: AppColors.surfaceContainerHigh.withValues(alpha: 0.55),
       onTap: () {
         Navigator.push(
           context,
@@ -488,19 +575,18 @@ class WeatherHomeScreen extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 46,
+            height: 46,
             decoration: BoxDecoration(
               color: magColor.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: magColor.withValues(alpha: 0.4)),
+              border: Border.all(color: magColor.withValues(alpha: 0.45)),
             ),
             child: Center(
               child: Text(
                 gempa.magnitude,
-                style: TextStyle(
-                  color: magColor,
-                  fontSize: 16,
+                style: AppTypography.tabularSm(color: magColor).copyWith(
+                  fontSize: 15,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -515,16 +601,17 @@ class WeatherHomeScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'GEMPA TERKINI (BMKG)',
+                      'GEMPA TERKINI BMKG',
                       style: AppTypography.labelUppercase(color: magColor),
                     ),
-                    Text(gempa.jam, style: AppTypography.labelCompact()),
+                    Text(gempa.jam, style: AppTypography.tabularSm()),
                   ],
                 ),
                 const SizedBox(height: 3),
                 Text(
                   gempa.wilayah,
-                  style: AppTypography.bodySm(color: AppColors.onSurface),
+                  style: AppTypography.bodySm(color: AppColors.onSurface)
+                      .copyWith(fontWeight: FontWeight.w500),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -532,7 +619,9 @@ class WeatherHomeScreen extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     'Jarak ~${MeteorologyCalculator.formatDistance(distanceKm)} dari ${region.displayTitle}',
-                    style: AppTypography.labelCompact(color: AppColors.tertiary),
+                    style: AppTypography.labelCompact(
+                      color: AppColors.tertiary,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -542,8 +631,8 @@ class WeatherHomeScreen extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           const Icon(
-            Icons.arrow_forward_ios_rounded,
-            size: 14,
+            Icons.chevron_right_rounded,
+            size: 18,
             color: AppColors.onSurfaceVariant,
           ),
         ],
@@ -557,9 +646,9 @@ class WeatherHomeScreen extends StatelessWidget {
     required String message,
   }) {
     return GlassCard(
-      borderRadius: 14,
+      borderRadius: 16,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      borderColor: color.withValues(alpha: 0.4),
+      borderColor: color.withValues(alpha: 0.42),
       child: Row(
         children: [
           Icon(icon, size: 16, color: color),
@@ -580,7 +669,7 @@ class WeatherHomeScreen extends StatelessWidget {
     String error,
   ) {
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       child: Column(
         children: [
           const Icon(
@@ -598,7 +687,7 @@ class WeatherHomeScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () => atmosphereCtrl.refreshWeather(force: true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryContainer,
+              backgroundColor: Colors.white.withValues(alpha: 0.20),
               foregroundColor: Colors.white,
             ),
             child: const Text('Coba Muat Ulang'),

@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart';
+import '../../adapters/controllers/atmosphere_controller.dart';
 import '../../domain/entities/earthquake_entity.dart';
 import '../../domain/utils/meteorology_calculator.dart';
 import '../../infrastructure/config/bmkg_api_config.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import '../theme/atmosphere_theme_strategy.dart';
 import '../widgets/bmkg_attribution_footer.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/sky_atmosphere_background.dart';
 
 /// Detailed BMKG earthquake view with interactive epicentre map and shakemap toggle.
 class DetailGempaScreen extends StatefulWidget {
@@ -40,6 +43,17 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
         ? Get.find<BmkgApiConfig>()
         : const BmkgApiConfig();
 
+    final slot = Get.isRegistered<AtmosphereController>()
+        ? Get.find<AtmosphereController>().forecast.value?.current
+        : null;
+    final visualTheme = slot != null
+        ? AtmosphereThemeRegistry.resolveByWeatherCode(
+            slot.weatherCode,
+            fallbackDesc: slot.weatherDesc,
+            isNight: slot.isNightTime,
+          )
+        : AtmosphereThemeRegistry.resolveByWeatherCode(1);
+
     double? distanceKm;
     if (widget.userLatitude != null &&
         widget.userLongitude != null &&
@@ -55,36 +69,28 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.surfaceContainerLowest,
-              AppColors.surface,
-              AppColors.surfaceContainerLow,
-            ],
-          ),
-        ),
+      body: SkyAtmosphereBackground(
+        visualTheme: visualTheme,
+        enableMotion: false,
         child: SafeArea(
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
                 child: Row(
                   children: [
-                    GestureDetector(
+                    InkWell(
                       onTap: () => Navigator.pop(context),
+                      borderRadius: BorderRadius.circular(22),
                       child: Container(
-                        width: 38,
-                        height: 38,
+                        width: 44,
+                        height: 44,
+                        alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceContainerHigh
-                              .withValues(alpha: 0.6),
+                          color: Colors.white.withValues(alpha: 0.12),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.1),
+                            color: Colors.white.withValues(alpha: 0.16),
                           ),
                         ),
                         child: const Icon(
@@ -94,13 +100,11 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'Parameter Gempa Bumi',
-                        style: AppTypography.headlineSm(
-                          color: AppColors.onSurface,
-                        ),
+                        style: AppTypography.headlineMd(),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -109,7 +113,7 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
               ),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                  padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
                   physics: const BouncingScrollPhysics(),
                   children: [
                     _buildHeroCard(gempa, magColor, distanceKm),
@@ -141,6 +145,7 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
                         gempa.dirasakan!.trim().isNotEmpty) ...[
                       const SizedBox(height: 14),
                       GlassCard(
+                        borderRadius: 22,
                         padding: const EdgeInsets.all(16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,8 +168,8 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
                             Text(
                               gempa.dirasakan!,
                               style: AppTypography.bodySm(
-                                color: AppColors.onSurfaceVariant,
-                              ).copyWith(height: 1.4),
+                                color: AppColors.onSurfaceSoft,
+                              ).copyWith(height: 1.45),
                             ),
                           ],
                         ),
@@ -177,9 +182,7 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
                         Expanded(
                           child: Text(
                             'Visualisasi Episentrum & Guncangan',
-                            style: AppTypography.headlineSm(
-                              color: AppColors.onSurface,
-                            ),
+                            style: AppTypography.headlineSm(),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -211,6 +214,7 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
     double? distanceKm,
   ) {
     return GlassCard(
+      borderRadius: 24,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -222,15 +226,14 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
-                  color: magColor.withValues(alpha: 0.16),
+                  color: magColor.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: magColor.withValues(alpha: 0.4)),
+                  border: Border.all(color: magColor.withValues(alpha: 0.45)),
                 ),
                 child: Text(
                   'Magnitudo ${gempa.magnitude} SR',
-                  style: TextStyle(
-                    color: magColor,
-                    fontSize: 16,
+                  style: AppTypography.tabularSm(color: magColor).copyWith(
+                    fontSize: 15,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -243,7 +246,7 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
                     color: AppColors.onSurfaceVariant,
                   ),
                   const SizedBox(width: 4),
-                  Text(gempa.jam, style: AppTypography.labelCompact()),
+                  Text(gempa.jam, style: AppTypography.tabularSm()),
                 ],
               ),
             ],
@@ -251,8 +254,7 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
           const SizedBox(height: 16),
           Text(
             gempa.wilayah,
-            style: AppTypography.headlineSm(color: AppColors.onSurface)
-                .copyWith(fontWeight: FontWeight.w700, height: 1.3),
+            style: AppTypography.headlineSm().copyWith(height: 1.35),
           ),
           const SizedBox(height: 6),
           Text(
@@ -263,26 +265,26 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
             const SizedBox(height: 14),
             Container(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
-                color: AppColors.primaryContainer.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: AppColors.primaryContainer.withValues(alpha: 0.3),
+                  color: Colors.white.withValues(alpha: 0.14),
                 ),
               ),
               child: Row(
                 children: [
                   const Icon(
                     Icons.near_me_rounded,
-                    color: AppColors.primary,
+                    color: AppColors.tertiary,
                     size: 16,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Jarak ke episentrum: ~${MeteorologyCalculator.formatDistance(distanceKm)} dari ${widget.userRegionLabel ?? 'lokasi Anda'}',
-                      style: AppTypography.bodySm(color: AppColors.primary)
+                      style: AppTypography.bodySm(color: AppColors.onSurface)
                           .copyWith(fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -300,6 +302,7 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
         ? AppColors.accentRose
         : AppColors.accentEmerald;
     return GlassCard(
+      borderRadius: 22,
       padding: const EdgeInsets.all(16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,8 +317,7 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
                 const SizedBox(height: 4),
                 Text(
                   gempa.potensi,
-                  style: AppTypography.bodyMd(color: AppColors.onSurface)
-                      .copyWith(fontWeight: FontWeight.w600),
+                  style: AppTypography.bodyLg().copyWith(fontSize: 14),
                 ),
               ],
             ),
@@ -329,9 +331,9 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        color: Colors.black.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -359,17 +361,17 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.primaryContainer.withValues(alpha: 0.25)
+              ? Colors.white.withValues(alpha: 0.22)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
           label,
           style: AppTypography.labelCompact(
-            color: selected ? AppColors.primary : AppColors.onSurfaceVariant,
+            color: selected ? AppColors.onSurface : AppColors.onSurfaceMuted,
           ).copyWith(fontWeight: FontWeight.w600),
         ),
       ),
@@ -394,12 +396,12 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
         hasUser ? LatLng(widget.userLatitude!, widget.userLongitude!) : null;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(22),
       child: Container(
         height: 240,
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+          borderRadius: BorderRadius.circular(22),
           color: AppColors.surfaceContainerHigh,
         ),
         child: FlutterMap(
@@ -418,7 +420,7 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
                 polylines: [
                   Polyline(
                     points: [userPoint, epicentre],
-                    color: AppColors.tertiary.withValues(alpha: 0.8),
+                    color: AppColors.tertiary.withValues(alpha: 0.85),
                     strokeWidth: 2.0,
                   ),
                 ],
@@ -475,12 +477,12 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
 
   Widget _buildShakemapCard(EarthquakeEntity gempa) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(22),
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-          borderRadius: BorderRadius.circular(20),
-          color: AppColors.surfaceContainerHigh.withValues(alpha: 0.4),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+          borderRadius: BorderRadius.circular(22),
+          color: Colors.white.withValues(alpha: 0.08),
         ),
         child: gempa.shakemapUrl != null
             ? Image.network(
@@ -492,7 +494,7 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
                     height: 180,
                     alignment: Alignment.center,
                     child: const CircularProgressIndicator(
-                      color: AppColors.primaryContainer,
+                      color: AppColors.onSurface,
                     ),
                   );
                 },
@@ -506,6 +508,7 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
 
   Widget _buildSafetyCard() {
     return GlassCard(
+      borderRadius: 24,
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -549,7 +552,8 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
     required Color accent,
   }) {
     return GlassCard(
-      padding: const EdgeInsets.all(14),
+      borderRadius: 22,
+      padding: const EdgeInsets.all(15),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -559,8 +563,8 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
           const SizedBox(height: 4),
           Text(
             value,
-            style: AppTypography.bodyMd(color: AppColors.onSurface)
-                .copyWith(fontWeight: FontWeight.w700),
+            style: AppTypography.tabularSm(color: AppColors.onSurface)
+                .copyWith(fontSize: 14, fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -588,7 +592,7 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
           const SizedBox(height: 4),
           Text(
             'Pusat koordinat: ${gempa.coordinates}',
-            style: AppTypography.labelCompact(),
+            style: AppTypography.tabularSm(),
           ),
         ],
       ),
@@ -600,8 +604,8 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
-        style: AppTypography.bodySm(color: AppColors.onSurfaceVariant)
-            .copyWith(height: 1.4),
+        style: AppTypography.bodySm(color: AppColors.onSurfaceSoft)
+            .copyWith(height: 1.45),
       ),
     );
   }

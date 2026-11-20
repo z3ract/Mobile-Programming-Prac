@@ -3,16 +3,31 @@ import '../../domain/entities/notification_preference_entity.dart';
 import '../../domain/strategies/weather_advisory_strategy.dart';
 import 'app_colors.dart';
 
-/// Immutable visual palette and icon theme representing a live atmospheric condition.
+/// Atmospheric canvas and icon scene selector.
+enum SkySceneType {
+  sunny,
+  partlyCloudy,
+  cloudy,
+  hazeFog,
+  lightRain,
+  storm,
+  night,
+}
+
+/// Immutable visual palette, stops, and icon theme representing live atmospheric state.
 class AtmosphereVisualTheme {
+  final SkySceneType sceneType;
   final List<Color> skyGradientColors;
+  final List<double> skyStops;
   final Color ambientGlowColor;
   final Color accentColor;
   final IconData icon;
   final String badgeLabel;
 
   const AtmosphereVisualTheme({
+    required this.sceneType,
     required this.skyGradientColors,
+    this.skyStops = const [0.0, 0.44, 0.78, 1.0],
     required this.ambientGlowColor,
     required this.accentColor,
     required this.icon,
@@ -33,163 +48,163 @@ class SeverityVisualSpec {
   });
 }
 
-/// O(1) Strategy lookup registry mapping BMKG weather codes to dynamic UI themes.
+/// O(1) Strategy lookup registry mapping BMKG weather codes to dynamic sky themes.
 class AtmosphereThemeRegistry {
+  static const List<Color> _sunnyGradient = [
+    Color(0xFF1B65C4),
+    Color(0xFF3A8EE6),
+    Color(0xFF72B2EC),
+    Color(0xFFD9A06C),
+  ];
+
+  static const List<Color> _cloudyGradient = [
+    Color(0xFF2B3A55),
+    Color(0xFF3C4F6D),
+    Color(0xFF516582),
+    Color(0xFF687B95),
+  ];
+
+  static const List<Color> _hazeGradient = [
+    Color(0xFF1D2B3A),
+    Color(0xFF2D4356),
+    Color(0xFF435B70),
+    Color(0xFF5C768D),
+  ];
+
+  static const List<Color> _lightRainGradient = [
+    Color(0xFF1F2B3E),
+    Color(0xFF2D3E57),
+    Color(0xFF3C506B),
+    Color(0xFF4D627D),
+  ];
+
+  static const List<Color> _stormGradient = [
+    Color(0xFF0D1321),
+    Color(0xFF172036),
+    Color(0xFF222E48),
+    Color(0xFF2D3A54),
+  ];
+
+  static const List<Color> _nightGradient = [
+    Color(0xFF060913),
+    Color(0xFF0D152B),
+    Color(0xFF162242),
+    Color(0xFF1F2D52),
+  ];
+
   static const Map<WeatherConditionCategory, AtmosphereVisualTheme>
       _dayThemeMap = {
     WeatherConditionCategory.clear: AtmosphereVisualTheme(
-      skyGradientColors: [
-        Color(0xFF0A2444),
-        Color(0xFF0E1D34),
-        Color(0xFF141C29),
-      ],
+      sceneType: SkySceneType.sunny,
+      skyGradientColors: _sunnyGradient,
       ambientGlowColor: AppColors.secondary,
       accentColor: AppColors.secondary,
       icon: Icons.wb_sunny_rounded,
-      badgeLabel: 'Cerah / Panas',
+      badgeLabel: 'Cerah',
     ),
     WeatherConditionCategory.partlyCloudy: AtmosphereVisualTheme(
-      skyGradientColors: [
-        Color(0xFF091B33),
-        Color(0xFF0D1727),
-        Color(0xFF141C29),
-      ],
-      ambientGlowColor: AppColors.primaryContainer,
+      sceneType: SkySceneType.partlyCloudy,
+      skyGradientColors: _cloudyGradient,
+      ambientGlowColor: AppColors.primary,
       accentColor: AppColors.primary,
       icon: Icons.wb_cloudy_rounded,
       badgeLabel: 'Cerah Berawan',
     ),
     WeatherConditionCategory.cloudy: AtmosphereVisualTheme(
-      skyGradientColors: [
-        Color(0xFF101926),
-        Color(0xFF16202F),
-        Color(0xFF111824),
-      ],
-      ambientGlowColor: AppColors.outline,
-      accentColor: AppColors.onSurfaceVariant,
+      sceneType: SkySceneType.cloudy,
+      skyGradientColors: _cloudyGradient,
+      ambientGlowColor: AppColors.onSurfaceVariant,
+      accentColor: AppColors.onSurfaceSoft,
       icon: Icons.cloud_rounded,
-      badgeLabel: 'Mendung',
+      badgeLabel: 'Berawan',
     ),
     WeatherConditionCategory.hazeFog: AtmosphereVisualTheme(
-      skyGradientColors: [
-        Color(0xFF1A2029),
-        Color(0xFF161E2B),
-        Color(0xFF0D141F),
-      ],
-      ambientGlowColor: AppColors.outline,
-      accentColor: AppColors.secondary,
+      sceneType: SkySceneType.hazeFog,
+      skyGradientColors: _hazeGradient,
+      ambientGlowColor: AppColors.onSurfaceMuted,
+      accentColor: AppColors.tertiary,
       icon: Icons.foggy,
       badgeLabel: 'Kabut / Kabur',
     ),
     WeatherConditionCategory.lightRain: AtmosphereVisualTheme(
-      skyGradientColors: [
-        Color(0xFF071B2E),
-        Color(0xFF0B1F33),
-        Color(0xFF111926),
-      ],
+      sceneType: SkySceneType.lightRain,
+      skyGradientColors: _lightRainGradient,
       ambientGlowColor: AppColors.tertiary,
       accentColor: AppColors.tertiary,
       icon: Icons.grain_rounded,
-      badgeLabel: 'Hujan',
+      badgeLabel: 'Hujan Ringan',
     ),
     WeatherConditionCategory.heavyRain: AtmosphereVisualTheme(
-      skyGradientColors: [
-        Color(0xFF061527),
-        Color(0xFF0B1829),
-        Color(0xFF121824),
-      ],
+      sceneType: SkySceneType.storm,
+      skyGradientColors: _stormGradient,
       ambientGlowColor: AppColors.primaryContainer,
       accentColor: AppColors.tertiary,
       icon: Icons.water_drop_rounded,
       badgeLabel: 'Hujan Lebat',
     ),
     WeatherConditionCategory.thunderstorm: AtmosphereVisualTheme(
-      skyGradientColors: [
-        Color(0xFF16132B),
-        Color(0xFF101526),
-        Color(0xFF0A101C),
-      ],
+      sceneType: SkySceneType.storm,
+      skyGradientColors: _stormGradient,
       ambientGlowColor: AppColors.secondary,
       accentColor: AppColors.secondary,
       icon: Icons.thunderstorm_rounded,
-      badgeLabel: 'Hujan Petir',
+      badgeLabel: 'Badai Petir',
     ),
   };
 
   static const Map<WeatherConditionCategory, AtmosphereVisualTheme>
       _nightThemeMap = {
     WeatherConditionCategory.clear: AtmosphereVisualTheme(
-      skyGradientColors: [
-        Color(0xFF040B18),
-        Color(0xFF0A1424),
-        Color(0xFF121A28),
-      ],
-      ambientGlowColor: AppColors.primaryContainer,
+      sceneType: SkySceneType.night,
+      skyGradientColors: _nightGradient,
+      ambientGlowColor: AppColors.primary,
       accentColor: AppColors.primary,
       icon: Icons.nights_stay_rounded,
-      badgeLabel: 'Cerah Malam',
+      badgeLabel: 'Malam Cerah',
     ),
     WeatherConditionCategory.partlyCloudy: AtmosphereVisualTheme(
-      skyGradientColors: [
-        Color(0xFF050D1A),
-        Color(0xFF0B1422),
-        Color(0xFF131B29),
-      ],
-      ambientGlowColor: AppColors.primaryContainer,
+      sceneType: SkySceneType.night,
+      skyGradientColors: _nightGradient,
+      ambientGlowColor: AppColors.primary,
       accentColor: AppColors.primary,
       icon: Icons.nights_stay_outlined,
       badgeLabel: 'Berawan Malam',
     ),
     WeatherConditionCategory.cloudy: AtmosphereVisualTheme(
-      skyGradientColors: [
-        Color(0xFF0A101B),
-        Color(0xFF101824),
-        Color(0xFF151E2B),
-      ],
-      ambientGlowColor: AppColors.outline,
-      accentColor: AppColors.onSurfaceVariant,
+      sceneType: SkySceneType.cloudy,
+      skyGradientColors: _nightGradient,
+      ambientGlowColor: AppColors.onSurfaceMuted,
+      accentColor: AppColors.onSurfaceSoft,
       icon: Icons.cloud_rounded,
       badgeLabel: 'Mendung Malam',
     ),
     WeatherConditionCategory.hazeFog: AtmosphereVisualTheme(
-      skyGradientColors: [
-        Color(0xFF0F141D),
-        Color(0xFF141B26),
-        Color(0xFF0C121B),
-      ],
-      ambientGlowColor: AppColors.outline,
-      accentColor: AppColors.secondary,
+      sceneType: SkySceneType.hazeFog,
+      skyGradientColors: _hazeGradient,
+      ambientGlowColor: AppColors.onSurfaceMuted,
+      accentColor: AppColors.tertiary,
       icon: Icons.foggy,
       badgeLabel: 'Kabut Malam',
     ),
     WeatherConditionCategory.lightRain: AtmosphereVisualTheme(
-      skyGradientColors: [
-        Color(0xFF051120),
-        Color(0xFF091829),
-        Color(0xFF0D1623),
-      ],
+      sceneType: SkySceneType.lightRain,
+      skyGradientColors: _lightRainGradient,
       ambientGlowColor: AppColors.tertiary,
       accentColor: AppColors.tertiary,
       icon: Icons.grain_rounded,
       badgeLabel: 'Hujan Malam',
     ),
     WeatherConditionCategory.heavyRain: AtmosphereVisualTheme(
-      skyGradientColors: [
-        Color(0xFF040E1C),
-        Color(0xFF081424),
-        Color(0xFF0D1420),
-      ],
+      sceneType: SkySceneType.storm,
+      skyGradientColors: _stormGradient,
       ambientGlowColor: AppColors.primaryContainer,
       accentColor: AppColors.tertiary,
       icon: Icons.water_drop_rounded,
       badgeLabel: 'Hujan Lebat',
     ),
     WeatherConditionCategory.thunderstorm: AtmosphereVisualTheme(
-      skyGradientColors: [
-        Color(0xFF110D22),
-        Color(0xFF0B1020),
-        Color(0xFF070C16),
-      ],
+      sceneType: SkySceneType.storm,
+      skyGradientColors: _stormGradient,
       ambientGlowColor: AppColors.secondary,
       accentColor: AppColors.secondary,
       icon: Icons.thunderstorm_rounded,

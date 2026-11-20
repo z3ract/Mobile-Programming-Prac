@@ -232,13 +232,15 @@ void main() {
       expect(rainPolicy.severity, AlertSeverity.danger);
 
       final stormTheme = AtmosphereThemeRegistry.resolveByWeatherCode(95);
-      expect(stormTheme.badgeLabel, 'Hujan Petir');
+      expect(stormTheme.badgeLabel, 'Badai Petir');
+      expect(stormTheme.sceneType, SkySceneType.storm);
 
       final nightClearTheme = AtmosphereThemeRegistry.resolveByWeatherCode(
         0,
         isNight: true,
       );
-      expect(nightClearTheme.badgeLabel, 'Cerah Malam');
+      expect(nightClearTheme.badgeLabel, 'Malam Cerah');
+      expect(nightClearTheme.sceneType, SkySceneType.night);
     });
 
     test('EvaluateWeatherAlertsUseCase evaluates & deduplicates notifications', () async {
@@ -347,16 +349,27 @@ void main() {
         );
 
         await tester.pumpWidget(
-          TerraCastUasApp(customBinding: testBinding),
+          TerraCastUasApp(
+            customBinding: testBinding,
+            enableAmbientMotion: false,
+          ),
         );
         await tester.pumpAndSettle();
 
-        // Tab 1: Cuaca displays Dinoyo + live temp
+        // Tab 1: Cuaca displays Dinoyo + live temp and supports °C / °F toggle
         expect(find.text('Dinoyo'), findsWidgets);
-        expect(find.text('30°'), findsWidgets);
+        expect(find.text('30'), findsOneWidget);
 
-        // Open LocationManagerScreen from search bar
-        await tester.tap(find.textContaining('Cari lokasi / ADM4'));
+        await tester.tap(find.byKey(const Key('weather_unit_toggle')));
+        await tester.pumpAndSettle();
+        expect(find.text('86'), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('weather_unit_toggle')));
+        await tester.pumpAndSettle();
+        expect(find.text('30'), findsOneWidget);
+
+        // Open LocationManagerScreen from city selector header
+        await tester.tap(find.byKey(const Key('weather_location_button')));
         await tester.pumpAndSettle();
         expect(find.text('Lokasi & Wilayah BMKG'), findsOneWidget);
         expect(find.text('Deteksi Lokasi GPS Otomatis'), findsOneWidget);
@@ -380,7 +393,7 @@ void main() {
         await tester.tap(find.text('Seismik'));
         await tester.pumpAndSettle();
         expect(find.text('Aktivitas Seismik'), findsOneWidget);
-        expect(find.text('Gempa M 5.0+'), findsOneWidget);
+        expect(find.text('Magnitudo 5.0+'), findsOneWidget);
 
         // Tab 3: Peta
         await tester.tap(find.text('Peta'));

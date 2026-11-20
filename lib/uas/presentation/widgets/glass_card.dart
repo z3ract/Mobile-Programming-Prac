@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
-/// Frosted Cupertino glassmorphism container with optional InkWell tap feedback.
+/// Translucent frosted glass container modeled after contoh.html glass-card.
 class GlassCard extends StatelessWidget {
   final Widget child;
   final double? width;
@@ -22,12 +22,40 @@ class GlassCard extends StatelessWidget {
     this.height,
     this.padding,
     this.margin,
-    this.borderRadius = 22,
-    this.blur = 16,
+    this.borderRadius = 24,
+    this.blur = 20,
     this.backgroundColor,
     this.borderColor,
     this.onTap,
   });
+
+  /// High-contrast dark frosted surface for overlays, bottom nav, or alerts.
+  factory GlassCard.dark({
+    Key? key,
+    required Widget child,
+    double? width,
+    double? height,
+    EdgeInsetsGeometry? padding,
+    EdgeInsetsGeometry? margin,
+    double borderRadius = 22,
+    double blur = 24,
+    Color? borderColor,
+    VoidCallback? onTap,
+  }) {
+    return GlassCard(
+      key: key,
+      width: width,
+      height: height,
+      padding: padding,
+      margin: margin,
+      borderRadius: borderRadius,
+      blur: blur,
+      backgroundColor: AppColors.glassDarkFill,
+      borderColor: borderColor ?? AppColors.glassBorder,
+      onTap: onTap,
+      child: child,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,8 +72,8 @@ class GlassCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.28),
-            blurRadius: 20,
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 24,
             spreadRadius: -4,
             offset: const Offset(0, 8),
           ),
@@ -71,8 +99,8 @@ class GlassCard extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(borderRadius),
-            splashColor: AppColors.primaryContainer.withValues(alpha: 0.15),
-            highlightColor: Colors.white.withValues(alpha: 0.05),
+            splashColor: Colors.white.withValues(alpha: 0.14),
+            highlightColor: Colors.white.withValues(alpha: 0.06),
             child: glass,
           ),
         ),

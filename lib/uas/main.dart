@@ -14,6 +14,7 @@ import 'presentation/screens/weather_home_screen.dart';
 import 'presentation/theme/app_colors.dart';
 import 'presentation/theme/app_typography.dart';
 import 'presentation/theme/atmosphere_theme_strategy.dart';
+import 'presentation/widgets/sky_atmosphere_background.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,12 +35,14 @@ class TerraCastUasApp extends StatelessWidget {
   final SharedPreferences? prefs;
   final UasBinding? customBinding;
   final LocalNotificationDispatcher? notificationDispatcherOverride;
+  final bool enableAmbientMotion;
 
   const TerraCastUasApp({
     super.key,
     this.prefs,
     this.customBinding,
     this.notificationDispatcherOverride,
+    this.enableAmbientMotion = true,
   });
 
   @override
@@ -51,7 +54,7 @@ class TerraCastUasApp extends StatelessWidget {
         );
 
     return GetMaterialApp(
-      title: 'TerraCast Nusantara • UAS Mobile Programming',
+      title: 'TerraCast Nusantara · UAS Mobile Programming',
       debugShowCheckedModeBanner: false,
       initialBinding: binding,
       theme: ThemeData(
@@ -64,14 +67,19 @@ class TerraCastUasApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const MainUasShell(),
+      home: MainUasShell(enableAmbientMotion: enableAmbientMotion),
     );
   }
 }
 
-/// Persistent 5-tab Cupertino glass shell with dynamic atmospheric sky background.
+/// Persistent 5-tab glass shell backed by the live dynamic sky atmosphere canvas.
 class MainUasShell extends StatefulWidget {
-  const MainUasShell({super.key});
+  final bool enableAmbientMotion;
+
+  const MainUasShell({
+    super.key,
+    this.enableAmbientMotion = true,
+  });
 
   @override
   State<MainUasShell> createState() => _MainUasShellState();
@@ -92,7 +100,10 @@ class _MainUasShellState extends State<MainUasShell> {
     final alertCtrl = Get.find<AlertController>();
 
     final List<Widget> screens = [
-      WeatherHomeScreen(onNavigateTab: _onTabSelected),
+      WeatherHomeScreen(
+        onNavigateTab: _onTabSelected,
+        enableAmbientMotion: widget.enableAmbientMotion,
+      ),
       SeismicScreen(onNavigateTab: _onTabSelected),
       InteractiveMapScreen(onNavigateTab: _onTabSelected),
       AlertCenterScreen(onNavigateTab: _onTabSelected),
@@ -112,16 +123,9 @@ class _MainUasShellState extends State<MainUasShell> {
               )
             : AtmosphereThemeRegistry.resolveByWeatherCode(1);
 
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeOutCubic,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: visualTheme.skyGradientColors,
-            ),
-          ),
+        return SkyAtmosphereBackground(
+          visualTheme: visualTheme,
+          enableMotion: widget.enableAmbientMotion,
           child: IndexedStack(index: _currentIndex, children: screens),
         );
       }),
@@ -131,26 +135,26 @@ class _MainUasShellState extends State<MainUasShell> {
 
   Widget _buildFloatingGlassNav(AlertController alertCtrl) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 16),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(32),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
           child: Container(
-            height: 66,
+            height: 64,
             padding: const EdgeInsets.symmetric(horizontal: 6),
             decoration: BoxDecoration(
-              color: AppColors.surfaceContainer.withValues(alpha: 0.74),
-              borderRadius: BorderRadius.circular(28),
+              color: AppColors.glassDarkFill,
+              borderRadius: BorderRadius.circular(32),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.12),
+                color: Colors.white.withValues(alpha: 0.16),
                 width: 1.0,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
+                  color: Colors.black.withValues(alpha: 0.36),
+                  blurRadius: 28,
+                  offset: const Offset(0, 12),
                 ),
               ],
             ),
@@ -162,28 +166,33 @@ class _MainUasShellState extends State<MainUasShell> {
                 children: [
                   _buildNavItem(
                     index: 0,
-                    icon: Icons.wb_sunny_rounded,
+                    icon: Icons.wb_sunny_outlined,
+                    activeIcon: Icons.wb_sunny_rounded,
                     label: 'Cuaca',
                   ),
                   _buildNavItem(
                     index: 1,
                     icon: Icons.waves_rounded,
+                    activeIcon: Icons.waves_rounded,
                     label: 'Seismik',
                   ),
                   _buildNavItem(
                     index: 2,
-                    icon: Icons.map_rounded,
+                    icon: Icons.map_outlined,
+                    activeIcon: Icons.map_rounded,
                     label: 'Peta',
                   ),
                   _buildNavItem(
                     index: 3,
-                    icon: Icons.notifications_active_rounded,
+                    icon: Icons.notifications_none_rounded,
+                    activeIcon: Icons.notifications_active_rounded,
                     label: 'Peringatan',
                     showBadgeDot: hasAlerts,
                   ),
                   _buildNavItem(
                     index: 4,
                     icon: Icons.podcasts_rounded,
+                    activeIcon: Icons.podcasts_rounded,
                     label: 'Stasiun',
                   ),
                 ],
@@ -198,33 +207,29 @@ class _MainUasShellState extends State<MainUasShell> {
   Widget _buildNavItem({
     required int index,
     required IconData icon,
+    required IconData activeIcon,
     required String label,
     bool showBadgeDot = false,
   }) {
     final isSelected = _currentIndex == index;
-    const activeColor = AppColors.primaryContainer;
-    const inactiveColor = AppColors.onSurfaceVariant;
+    final Color fgColor = isSelected
+        ? Colors.white
+        : Colors.white.withValues(alpha: 0.65);
 
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => _onTabSelected(index),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
           margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
           decoration: BoxDecoration(
             color: isSelected
-                ? activeColor.withValues(alpha: 0.16)
+                ? Colors.white.withValues(alpha: 0.18)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(18),
-            border: isSelected
-                ? Border.all(
-                    color: activeColor.withValues(alpha: 0.35),
-                    width: 1,
-                  )
-                : null,
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -234,8 +239,8 @@ class _MainUasShellState extends State<MainUasShell> {
                 clipBehavior: Clip.none,
                 children: [
                   Icon(
-                    icon,
-                    color: isSelected ? activeColor : inactiveColor,
+                    isSelected ? activeIcon : icon,
+                    color: fgColor,
                     size: 19,
                   ),
                   if (showBadgeDot)
@@ -258,11 +263,9 @@ class _MainUasShellState extends State<MainUasShell> {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTypography.labelCompact(
-                  color: isSelected ? activeColor : inactiveColor,
-                ).copyWith(
+                style: AppTypography.labelCompact(color: fgColor).copyWith(
                   fontSize: 10.5,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),
             ],

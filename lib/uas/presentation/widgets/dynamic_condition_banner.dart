@@ -25,10 +25,10 @@ class DynamicConditionBanner extends StatelessWidget {
     if (matchingNowcasts.isNotEmpty) {
       final nowcast = matchingNowcasts.first;
       return GlassCard(
-        borderRadius: 20,
+        borderRadius: 22,
         padding: const EdgeInsets.all(14),
-        backgroundColor: AppColors.accentRose.withValues(alpha: 0.16),
-        borderColor: AppColors.accentRose.withValues(alpha: 0.45),
+        backgroundColor: AppColors.accentRose.withValues(alpha: 0.18),
+        borderColor: AppColors.accentRose.withValues(alpha: 0.48),
         onTap: onOpenAlerts,
         child: Row(
           children: [
@@ -36,7 +36,7 @@ class DynamicConditionBanner extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: AppColors.accentRose.withValues(alpha: 0.2),
+                color: AppColors.accentRose.withValues(alpha: 0.22),
                 borderRadius: BorderRadius.circular(13),
               ),
               child: const Icon(
@@ -51,7 +51,7 @@ class DynamicConditionBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'PERINGATAN DINI CUACA BMKG (NOWCAST)',
+                    'PERINGATAN DINI CUACA BMKG',
                     style: AppTypography.labelUppercase(
                       color: AppColors.accentRose,
                     ),
@@ -80,8 +80,8 @@ class DynamicConditionBanner extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 14,
+              Icons.chevron_right_rounded,
+              size: 18,
               color: AppColors.onSurfaceVariant,
             ),
           ],
@@ -99,7 +99,7 @@ class DynamicConditionBanner extends StatelessWidget {
     final severitySpec = SeverityVisualRegistry.resolveSeverity(policy.severity);
 
     return GlassCard(
-      borderRadius: 20,
+      borderRadius: 22,
       padding: const EdgeInsets.all(14),
       onTap: onOpenAlerts,
       child: Row(
@@ -128,23 +128,19 @@ class DynamicConditionBanner extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: severitySpec.color.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
+                    Text(
+                      severitySpec.label,
+                      style: AppTypography.labelCompact(
+                        color: severitySpec.color,
+                      ).copyWith(fontSize: 10.5, fontWeight: FontWeight.w700),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6),
                       child: Text(
-                        severitySpec.label,
-                        style: AppTypography.labelCompact(
-                          color: severitySpec.color,
-                        ).copyWith(fontSize: 10, fontWeight: FontWeight.w700),
+                        '·',
+                        style: TextStyle(color: AppColors.onSurfaceMuted),
                       ),
                     ),
-                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         policy.advisoryHeadline,
@@ -159,9 +155,9 @@ class DynamicConditionBanner extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   policy.activityRecommendation,
-                  style: AppTypography.labelCompact(
+                  style: AppTypography.bodySm(
                     color: AppColors.onSurfaceVariant,
-                  ).copyWith(height: 1.35),
+                  ).copyWith(height: 1.38),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),

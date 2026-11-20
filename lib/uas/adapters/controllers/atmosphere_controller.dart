@@ -26,8 +26,16 @@ class AtmosphereController extends GetxController {
   final RxList<RegionEntity> favoriteRegions = <RegionEntity>[].obs;
   final RxBool isLoading = false.obs;
   final RxBool isResolvingGps = false.obs;
+  final RxBool useFahrenheit = false.obs;
   final RxnString errorMessage = RxnString();
   final RxnString gpsNotice = RxnString();
+
+  void toggleTemperatureUnit() => useFahrenheit.value = !useFahrenheit.value;
+
+  int convertTemp(double celsius) =>
+      useFahrenheit.value ? ((celsius * 9.0 / 5.0) + 32.0).round() : celsius.round();
+
+  String get unitSymbol => useFahrenheit.value ? '°F' : '°C';
 
   final Set<String> _favoriteAdm4Set = {};
   bool _bootstrapped = false;

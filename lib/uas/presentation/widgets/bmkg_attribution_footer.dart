@@ -24,9 +24,10 @@ class BmkgAttributionFooter extends StatelessWidget {
     final statusText = isFromCache ? 'CACHE OFFLINE' : 'LIVE API';
 
     return GlassCard(
-      borderRadius: 16,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      backgroundColor: AppColors.surfaceContainerLowest.withValues(alpha: 0.55),
+      borderRadius: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      backgroundColor: Colors.black.withValues(alpha: 0.24),
+      borderColor: Colors.white.withValues(alpha: 0.10),
       child: Row(
         children: [
           Icon(Icons.verified_rounded, size: 16, color: statusColor),
@@ -46,7 +47,7 @@ class BmkgAttributionFooter extends StatelessWidget {
                   Text(
                     detailLabel!,
                     style: AppTypography.labelCompact(
-                      color: AppColors.onSurfaceVariant,
+                      color: AppColors.onSurfaceMuted,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

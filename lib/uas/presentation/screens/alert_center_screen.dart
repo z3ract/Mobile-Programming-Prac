@@ -54,7 +54,7 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 10),
               child: Row(
                 children: [
                   Expanded(
@@ -63,14 +63,13 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
                       children: [
                         Text(
                           'Pusat Peringatan',
-                          style: AppTypography.headlineMd(
-                            color: AppColors.onSurface,
-                          ),
+                          style: AppTypography.headlineLg(),
                         ),
+                        const SizedBox(height: 3),
                         Obx(() {
                           final region = atmosphereCtrl.activeRegion.value;
                           return Text(
-                            'Nowcast CAP BMKG & Notifikasi • ${region.provinsi}',
+                            'Nowcast CAP BMKG & Notifikasi · ${region.provinsi}',
                             style: AppTypography.bodySm(),
                             overflow: TextOverflow.ellipsis,
                           );
@@ -78,19 +77,27 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
                       ],
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => alertCtrl.refreshNowcast(force: true),
-                    icon: const Icon(
-                      Icons.refresh_rounded,
-                      color: AppColors.primary,
-                    ),
-                    style: IconButton.styleFrom(
-                      backgroundColor:
-                          AppColors.surfaceContainerHigh.withValues(alpha: 0.6),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.1),
+                  const SizedBox(width: 8),
+                  Tooltip(
+                    message: 'Perbarui Nowcast BMKG',
+                    child: InkWell(
+                      onTap: () => alertCtrl.refreshNowcast(force: true),
+                      borderRadius: BorderRadius.circular(22),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.11),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.16),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.refresh_rounded,
+                          size: 19,
+                          color: AppColors.onSurface,
                         ),
                       ),
                     ),
@@ -99,26 +106,27 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
               ),
             ),
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              height: 46,
+              margin: const EdgeInsets.symmetric(horizontal: 18),
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                color: Colors.black.withValues(alpha: 0.24),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
               ),
               child: TabBar(
                 controller: _tabController,
                 indicatorSize: TabBarIndicatorSize.tab,
                 dividerColor: Colors.transparent,
                 indicator: BoxDecoration(
-                  color: AppColors.surfaceBright.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(14),
+                  color: Colors.white.withValues(alpha: 0.20),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.15),
+                    color: Colors.white.withValues(alpha: 0.22),
                   ),
                 ),
                 labelColor: AppColors.onSurface,
-                unselectedLabelColor: AppColors.onSurfaceVariant,
+                unselectedLabelColor: AppColors.onSurfaceMuted,
                 labelStyle: AppTypography.bodySm().copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -128,6 +136,7 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
                 ],
               ),
             ),
+            const SizedBox(height: 10),
             Expanded(
               child: TabBarView(
                 controller: _tabController,
@@ -147,7 +156,7 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
     return Obx(() {
       if (alertCtrl.isLoading.value && alertCtrl.nowcastItems.isEmpty) {
         return const Center(
-          child: CircularProgressIndicator(color: AppColors.primaryContainer),
+          child: CircularProgressIndicator(color: AppColors.onSurface),
         );
       }
 
@@ -156,10 +165,10 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
 
       return RefreshIndicator(
         onRefresh: () => alertCtrl.refreshNowcast(force: true),
-        color: AppColors.primaryContainer,
+        color: AppColors.onSurface,
         backgroundColor: AppColors.surfaceContainerHigh,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 108),
+          padding: const EdgeInsets.fromLTRB(18, 6, 18, 112),
           physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics(),
           ),
@@ -167,7 +176,7 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
             if (alertCtrl.nowcastError.value != null)
               GlassCard(
                 margin: const EdgeInsets.only(bottom: 12),
-                borderColor: AppColors.accentRose.withValues(alpha: 0.4),
+                borderColor: AppColors.accentRose.withValues(alpha: 0.45),
                 child: Text(
                   alertCtrl.nowcastError.value!,
                   style: AppTypography.bodySm(color: AppColors.error),
@@ -233,11 +242,11 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
     required bool highlighted,
     required VoidCallback onTap,
   }) {
-    final accent =
-        highlighted ? AppColors.accentRose : AppColors.secondary;
+    final accent = highlighted ? AppColors.accentRose : AppColors.secondary;
     return GlassCard(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      borderRadius: 22,
+      padding: const EdgeInsets.all(15),
       borderColor: highlighted
           ? AppColors.accentRose.withValues(alpha: 0.5)
           : AppColors.glassBorder,
@@ -247,13 +256,12 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
         children: [
           Row(
             children: [
-              Icon(Icons.campaign_rounded, size: 18, color: accent),
+              Icon(Icons.campaign_rounded, size: 19, color: accent),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   item.title,
-                  style: AppTypography.bodyMd(color: AppColors.onSurface)
-                      .copyWith(fontWeight: FontWeight.w600),
+                  style: AppTypography.bodyLg().copyWith(fontSize: 14),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -261,7 +269,7 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
               const Icon(
                 Icons.chevron_right_rounded,
                 size: 18,
-                color: AppColors.onSurfaceVariant,
+                color: AppColors.onSurfaceMuted,
               ),
             ],
           ),
@@ -276,7 +284,7 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
             const SizedBox(height: 6),
             Text(
               'Terbit: ${item.pubDate}',
-              style: AppTypography.labelCompact(color: AppColors.tertiary),
+              style: AppTypography.tabularSm(color: AppColors.tertiary),
             ),
           ],
         ],
@@ -293,10 +301,11 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
       final alerts = alertCtrl.evaluatedAlerts;
 
       return ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 108),
+        padding: const EdgeInsets.fromLTRB(18, 6, 18, 112),
         physics: const BouncingScrollPhysics(),
         children: [
           GlassCard(
+            borderRadius: 24,
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,19 +319,23 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
                   'Kirim notifikasi lokal asli ke status bar berdasarkan lokasi & kondisi cuaca BMKG saat ini.',
                   style: AppTypography.bodySm(),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
+                  height: 46,
                   child: ElevatedButton.icon(
                     onPressed: alertCtrl.sendTestNotification,
                     icon: const Icon(Icons.notifications_active_rounded),
                     label: const Text('Uji Notifikasi Sistem'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryContainer,
+                      backgroundColor: Colors.white.withValues(alpha: 0.22),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.28),
+                        ),
                       ),
                     ),
                   ),
@@ -360,8 +373,9 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
                   SeverityVisualRegistry.resolveCategoryIcon(alert.category);
               return GlassCard(
                 margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
-                borderColor: spec.color.withValues(alpha: 0.4),
+                borderRadius: 22,
+                padding: const EdgeInsets.all(15),
+                borderColor: spec.color.withValues(alpha: 0.42),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -373,15 +387,10 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
                         children: [
                           Text(
                             alert.title,
-                            style: AppTypography.bodyMd(
-                              color: AppColors.onSurface,
-                            ).copyWith(fontWeight: FontWeight.w600),
+                            style: AppTypography.bodyLg().copyWith(fontSize: 14),
                           ),
                           const SizedBox(height: 3),
-                          Text(
-                            alert.message,
-                            style: AppTypography.bodySm(),
-                          ),
+                          Text(alert.message, style: AppTypography.bodySm()),
                           const SizedBox(height: 4),
                           Text(
                             alert.advice,
@@ -396,6 +405,7 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
             }),
           const SizedBox(height: 16),
           GlassCard(
+            borderRadius: 24,
             padding: const EdgeInsets.all(16),
             child: Material(
               type: MaterialType.transparency,
@@ -423,7 +433,7 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
                     contentPadding: EdgeInsets.zero,
                     activeThumbColor: AppColors.secondary,
                     title: Text(
-                      'Notifikasi Panas Ekstrem (≥ ${prefs.heatThresholdC.round()}°C)',
+                      'Notifikasi Panas Ekstrem (>= ${prefs.heatThresholdC.round()}°C)',
                       style: AppTypography.bodyMd(color: AppColors.onSurface),
                     ),
                     value: prefs.enableHeatAlert,
@@ -458,7 +468,7 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
                     contentPadding: EdgeInsets.zero,
                     activeThumbColor: AppColors.accentRose,
                     title: Text(
-                      'Notifikasi Gempa (M ≥ ${prefs.earthquakeMinMagnitude.toStringAsFixed(1)} SR)',
+                      'Notifikasi Gempa (M >= ${prefs.earthquakeMinMagnitude.toStringAsFixed(1)} SR)',
                       style: AppTypography.bodyMd(color: AppColors.onSurface),
                     ),
                     value: prefs.enableEarthquakeAlert,
@@ -499,9 +509,9 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceContainer,
+      backgroundColor: AppColors.surfaceContainerLow,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) => DraggableScrollableSheet(
         expand: false,
@@ -510,9 +520,7 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
         builder: (_, scrollCtrl) => Obx(() {
           if (alertCtrl.isLoadingCapDetail.value) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primaryContainer,
-              ),
+              child: CircularProgressIndicator(color: AppColors.onSurface),
             );
           }
 
@@ -552,7 +560,7 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
             padding: const EdgeInsets.all(20),
             children: [
               Text(
-                '${detail.event} • ${detail.severity}',
+                '${detail.event} · ${detail.severity}',
                 style: AppTypography.labelUppercase(
                   color: AppColors.accentRose,
                 ),
@@ -565,7 +573,7 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
               const SizedBox(height: 8),
               Text(
                 'Berlaku: ${detail.effective}\nBerakhir: ${detail.expires}',
-                style: AppTypography.labelCompact(color: AppColors.tertiary),
+                style: AppTypography.tabularSm(color: AppColors.tertiary),
               ),
               const SizedBox(height: 12),
               Text(
@@ -625,15 +633,18 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
               if (detail.areas.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(
-                  'Wilayah Terdampak:',
+                  'WILAYAH TERDAMPAK',
                   style: AppTypography.labelUppercase(),
                 ),
                 const SizedBox(height: 4),
                 ...detail.areas.map(
-                  (area) => Text(
-                    '• ${area.areaDesc}',
-                    style: AppTypography.bodySm(
-                      color: AppColors.onSurfaceVariant,
+                  (area) => Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: Text(
+                      '· ${area.areaDesc}',
+                      style: AppTypography.bodySm(
+                        color: AppColors.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ),

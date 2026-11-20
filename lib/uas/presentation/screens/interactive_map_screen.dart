@@ -58,6 +58,7 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
           final quakes = seismicCtrl.gempaTerkini;
           final stations = stationCtrl.stations;
           final polygonRings = alertCtrl.activePolygonRings;
+          final useFahrenheit = atmosphereCtrl.useFahrenheit.value;
 
           return Stack(
             children: [
@@ -105,6 +106,7 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
                           ..._buildStationMarkers(
                             stations,
                             atmosphereCtrl,
+                            useFahrenheit,
                           ),
                         if (_showUserLocation)
                           Marker(
@@ -146,9 +148,9 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
                 top: 10,
                 left: 16,
                 right: 16,
-                child: GlassCard(
-                  borderRadius: 20,
-                  padding: const EdgeInsets.all(12),
+                child: GlassCard.dark(
+                  borderRadius: 22,
+                  padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -160,32 +162,48 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
                               children: [
                                 Text(
                                   'Peta Interaktif Nusantara',
-                                  style: AppTypography.headlineSm(
-                                    color: AppColors.onSurface,
-                                  ),
+                                  style: AppTypography.headlineSm(),
                                   overflow: TextOverflow.ellipsis,
                                 ),
+                                const SizedBox(height: 2),
                                 Text(
-                                  'Pusat: ${activeRegion.displayTitle} • ${quakes.length} Gempa • ${stations.length} Stasiun',
-                                  style: AppTypography.labelCompact(),
+                                  'Pusat: ${activeRegion.displayTitle} · ${quakes.length} Gempa · ${stations.length} Stasiun',
+                                  style: AppTypography.tabularSm(),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
                           ),
-                          IconButton(
-                            onPressed: () {
-                              _mapController.move(userCenter, 5.5);
-                            },
-                            icon: const Icon(
-                              Icons.center_focus_strong_rounded,
-                              color: AppColors.primary,
+                          const SizedBox(width: 8),
+                          Tooltip(
+                            message: 'Pusatkan ke lokasi aktif',
+                            child: InkWell(
+                              onTap: () {
+                                _mapController.move(userCenter, 5.5);
+                              },
+                              borderRadius: BorderRadius.circular(22),
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.12),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.16),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.center_focus_strong_rounded,
+                                  color: AppColors.onSurface,
+                                  size: 19,
+                                ),
+                              ),
                             ),
-                            tooltip: 'Pusatkan ke lokasi aktif',
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
@@ -236,7 +254,7 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
               Positioned(
                 left: 16,
                 right: 16,
-                bottom: 96,
+                bottom: 98,
                 child: BmkgAttributionFooter(
                   attributionText: config.bmkgAttribution,
                   detailLabel:
@@ -302,21 +320,22 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
   List<Marker> _buildStationMarkers(
     List<BmkgStationEntity> stations,
     AtmosphereController atmosphereCtrl,
+    bool useFahrenheit,
   ) {
     return stations.map((station) {
       return Marker(
         point: LatLng(station.latitude, station.longitude),
-        width: 72,
+        width: 78,
         height: 42,
         child: GestureDetector(
           onTap: () => _showStationSheet(station, atmosphereCtrl),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
             decoration: BoxDecoration(
               color: AppColors.surfaceContainer.withValues(alpha: 0.92),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppColors.accentEmerald.withValues(alpha: 0.7),
+                color: AppColors.accentEmerald.withValues(alpha: 0.75),
               ),
             ),
             child: Row(
@@ -332,9 +351,9 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
                 Flexible(
                   child: Text(
                     station.liveTempC != null
-                        ? '${station.liveTempC!.round()}°'
+                        ? '${atmosphereCtrl.convertTemp(station.liveTempC!)}${useFahrenheit ? '°F' : '°C'}'
                         : 'BMKG',
-                    style: AppTypography.labelCompact(
+                    style: AppTypography.tabularSm(
                       color: AppColors.onSurface,
                     ).copyWith(fontWeight: FontWeight.w700),
                     overflow: TextOverflow.ellipsis,
@@ -357,16 +376,16 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
         decoration: BoxDecoration(
           color: selected
-              ? color.withValues(alpha: 0.22)
-              : AppColors.surfaceContainerLowest.withValues(alpha: 0.6),
+              ? color.withValues(alpha: 0.24)
+              : Colors.white.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected
-                ? color.withValues(alpha: 0.6)
-                : Colors.white.withValues(alpha: 0.1),
+                ? color.withValues(alpha: 0.65)
+                : Colors.white.withValues(alpha: 0.14),
           ),
         ),
         child: Text(
@@ -397,9 +416,9 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
 
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.surfaceContainer,
+      backgroundColor: AppColors.surfaceContainerLow,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(20),
@@ -427,8 +446,8 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    '${quake.tanggal} • ${quake.jam}',
-                    style: AppTypography.labelCompact(),
+                    '${quake.tanggal} · ${quake.jam}',
+                    style: AppTypography.tabularSm(),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -441,7 +460,7 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Kedalaman ${quake.kedalaman} • ${quake.potensi}',
+              'Kedalaman ${quake.kedalaman} · ${quake.potensi}',
               style: AppTypography.bodySm(),
             ),
             if (km != null) ...[
@@ -454,10 +473,12 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
+              height: 46,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryContainer,
+                  backgroundColor: Colors.white.withValues(alpha: 0.20),
                   foregroundColor: Colors.white,
+                  elevation: 0,
                 ),
                 onPressed: () {
                   Navigator.pop(ctx);
@@ -488,9 +509,9 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
   ) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.surfaceContainer,
+      backgroundColor: AppColors.surfaceContainerLow,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(20),
@@ -509,23 +530,25 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              '${station.locationLabel} • Elevasi ${station.elevation}',
+              '${station.locationLabel} · Elevasi ${station.elevation}',
               style: AppTypography.bodySm(),
             ),
             const SizedBox(height: 10),
             Text(
               station.liveTempC != null
-                  ? 'Cuaca Live: ${station.liveTempC!.round()}°C (${station.liveCondition}) • Ping ${station.latencyMs ?? 0} ms'
+                  ? 'Cuaca Live: ${atmosphereCtrl.convertTemp(station.liveTempC!)}${atmosphereCtrl.unitSymbol} (${station.liveCondition}) · Ping ${station.latencyMs ?? 0} ms'
                   : station.liveCondition,
               style: AppTypography.bodyMd(color: AppColors.accentEmerald),
             ),
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
+              height: 46,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryContainer,
+                  backgroundColor: Colors.white.withValues(alpha: 0.20),
                   foregroundColor: Colors.white,
+                  elevation: 0,
                 ),
                 onPressed: () async {
                   Navigator.pop(ctx);

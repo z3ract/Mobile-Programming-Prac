@@ -52,3 +52,5 @@ app.*.map.json
 # Exclude modules not yet ready
 lib/modul_12/
 lib/modul_13/
+
+lib/uas/contoh.html
