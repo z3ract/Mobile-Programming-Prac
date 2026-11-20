@@ -27,7 +27,15 @@ subprojects {
     if (project.name != "app") {
         afterEvaluate {
             val android = project.extensions.findByName("android") as? com.android.build.gradle.BaseExtension
-            android?.compileSdkVersion(34)
+            if (android != null) {
+                val currentSdk = android.compileSdkVersion
+                    ?.removePrefix("android-")
+                    ?.substringBefore(".")
+                    ?.toIntOrNull()
+                if (currentSdk != null && currentSdk < 34) {
+                    android.compileSdkVersion(34)
+                }
+            }
         }
     }
 }

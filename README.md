@@ -1,4 +1,4 @@
-# Halo, Saya Ahmad Damar Amrullah!
+2. # Halo, Saya Ahmad Damar Amrullah!
 
 ## Informasi Pribadi
 - **Nama**: Ahmad Damar Amrullah
@@ -21,4 +21,4 @@
 | 12 | 08 | UTS | Ujian Tengah Semester | [UTS](https://drive.google.com/file/d/1WoxcPY_I5459D5_kDoLsOH-gmV6bI56x/view?usp=sharing) | [Program](https://github.com/z3ract/Mobile-Programming-Prac/tree/main/lib/uts) |
 | 13 | 09 | 12 | Akses Lokasi dengan GPS di Flutter | - | - |
 | 14 | 10 | 13 | Operasi CRUD (Create, Read, Update, Delete) di Flutter dengan REST API | - | - |
-| 15 | 11 | UAS | Ujian Akhir Semester | - | - |
+| 15 | 11 | UAS | Ujian Akhir Semester | - | [Program](https://github.com/z3ract/Mobile-Programming-Prac/tree/main/lib/uas) |
