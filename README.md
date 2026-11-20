@@ -1,4 +1,4 @@
-2. # Halo, Saya Ahmad Damar Amrullah!
+# Halo, Saya Ahmad Damar Amrullah!
 
 ## Informasi Pribadi
 - **Nama**: Ahmad Damar Amrullah
