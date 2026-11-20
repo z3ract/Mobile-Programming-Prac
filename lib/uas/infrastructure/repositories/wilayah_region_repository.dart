@@ -446,41 +446,53 @@ class WilayahRegionRepository implements IRegionRepository {
     required double longitude,
     String? adminAreaHint,
     String? subAdminAreaHint,
+    String? districtHint,
+    String? villageHint,
     String? localityHint,
   }) async {
     try {
       if (adminAreaHint == null || adminAreaHint.trim().isEmpty) {
-        return findNearestPreset(latitude, longitude);
+        return null;
       }
 
       final provinces = await fetchProvinces();
       final matchedProvince = _findBestMatch(provinces, adminAreaHint);
       if (matchedProvince == null) {
-        return findNearestPreset(latitude, longitude);
+        return null;
       }
 
       final regencies = await fetchRegencies(matchedProvince.code);
       final matchedRegency = _findBestMatch(
         regencies,
-        subAdminAreaHint ?? localityHint ?? '',
+        subAdminAreaHint ?? districtHint ?? localityHint ?? '',
       );
       if (matchedRegency == null) {
-        return findNearestPreset(latitude, longitude);
+        return null;
       }
 
       final districts = await fetchDistricts(matchedRegency.code);
       if (districts.isEmpty) {
-        return findNearestPreset(latitude, longitude);
+        return null;
       }
-      final matchedDistrict =
-          _findBestMatch(districts, localityHint ?? '') ?? districts.first;
+      final matchedDistrict = _findBestMatch(
+        districts,
+        districtHint ?? localityHint ?? '',
+      );
+      if (matchedDistrict == null) {
+        return null;
+      }
 
       final villages = await fetchVillages(matchedDistrict.code);
       if (villages.isEmpty) {
-        return findNearestPreset(latitude, longitude);
+        return null;
       }
-      final matchedVillage =
-          _findBestMatch(villages, localityHint ?? '') ?? villages.first;
+      final matchedVillage = _findBestMatch(
+        villages,
+        villageHint ?? localityHint ?? '',
+      );
+      if (matchedVillage == null) {
+        return null;
+      }
 
       return RegionEntity(
         adm1: matchedProvince.code,
@@ -496,7 +508,7 @@ class WilayahRegionRepository implements IRegionRepository {
         isGpsResolved: true,
       );
     } catch (_) {
-      return findNearestPreset(latitude, longitude);
+      return null;
     }
   }
 

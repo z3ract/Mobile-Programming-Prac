@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../../adapters/controllers/atmosphere_controller.dart';
 import '../../adapters/controllers/region_picker_controller.dart';
 import '../../domain/entities/region_entity.dart';
+import '../../domain/services/i_location_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../theme/atmosphere_theme_strategy.dart';
@@ -119,6 +120,8 @@ class LocationManagerScreen extends StatelessWidget {
     return Obx(() {
       final resolving = atmosphereCtrl.isResolvingGps.value;
       final notice = atmosphereCtrl.gpsNotice.value;
+      final gpsError = atmosphereCtrl.gpsErrorType.value;
+      final hasError = gpsError != GpsErrorType.none;
 
       return GlassCard(
         borderRadius: 24,
@@ -191,8 +194,34 @@ class LocationManagerScreen extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 notice,
-                style: AppTypography.bodySm(color: AppColors.tertiary),
+                style: AppTypography.bodySm(
+                  color: hasError ? AppColors.secondary : AppColors.tertiary,
+                ),
               ),
+              if (gpsError == GpsErrorType.serviceDisabled ||
+                  gpsError == GpsErrorType.permissionDeniedForever) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: gpsError == GpsErrorType.serviceDisabled
+                        ? atmosphereCtrl.openGpsSettings
+                        : atmosphereCtrl.openAppLocationSettings,
+                    icon: const Icon(Icons.settings_rounded, size: 16),
+                    label: Text(
+                      gpsError == GpsErrorType.serviceDisabled
+                          ? 'Buka Pengaturan GPS'
+                          : 'Buka Pengaturan Izin',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.onSurface,
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.25),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ],
         ),

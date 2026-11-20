@@ -446,6 +446,90 @@ void main() {
       expect(insideRes.isOutsideIndonesia, false);
       expect(insideRes.region?.isGpsResolved, true);
       expect(insideRes.region?.latitude, -7.9439);
+
+      // Verify structured GPS error diagnostics & reverse-geocode fallback inside Indonesia.
+      final disabledRes = await ResolveGpsRegionUseCase(
+        locationProvider: const _FailingLocationProvider(
+          GeoLocationAttempt.failure(GpsErrorType.serviceDisabled),
+        ),
+        regionRepository: regionRepo,
+      ).execute(fallbackRegion: _sampleRegion);
+      expect(disabledRes.isGpsSuccess, false);
+      expect(disabledRes.errorType, GpsErrorType.serviceDisabled);
+
+      final deniedForeverRes = await ResolveGpsRegionUseCase(
+        locationProvider: const _FailingLocationProvider(
+          GeoLocationAttempt.failure(GpsErrorType.permissionDeniedForever),
+        ),
+        regionRepository: regionRepo,
+      ).execute(fallbackRegion: _sampleRegion);
+      expect(deniedForeverRes.isGpsSuccess, false);
+      expect(deniedForeverRes.errorType, GpsErrorType.permissionDeniedForever);
+
+      final timeoutRes = await ResolveGpsRegionUseCase(
+        locationProvider: const _FailingLocationProvider(
+          GeoLocationAttempt.failure(GpsErrorType.timeout),
+        ),
+        regionRepository: regionRepo,
+      ).execute(fallbackRegion: _sampleRegion);
+      expect(timeoutRes.isGpsSuccess, false);
+      expect(timeoutRes.errorType, GpsErrorType.timeout);
+
+      final reverseOnlyRes = await ResolveGpsRegionUseCase(
+        locationProvider: const _StaticLocationProvider(
+          GeoFixResult(latitude: -7.55, longitude: 110.82),
+          reverseResult: ReverseGeocodeResult(
+            provinceHint: 'Jawa Tengah',
+            cityHint: 'Kota Surakarta',
+            districtHint: 'Laweyan',
+            villageHint: 'Sriwedari',
+          ),
+        ),
+        regionRepository: _NullLookupRegionRepository(),
+      ).execute(fallbackRegion: _sampleRegion);
+      expect(reverseOnlyRes.isGpsSuccess, true);
+      expect(reverseOnlyRes.isOutsideIndonesia, false);
+      expect(reverseOnlyRes.region?.displayTitle, 'Sriwedari');
+      expect(reverseOnlyRes.region?.kotkab, 'Kota Surakarta');
+      expect(reverseOnlyRes.region?.adm4, 'COORD:-7.550,110.820');
+
+      // High-accuracy suffix & English province normalization ('East Java' -> 'Jawa Timur').
+      final preciseEastJavaRes = await ResolveGpsRegionUseCase(
+        locationProvider: const _StaticLocationProvider(
+          GeoFixResult(
+            latitude: -7.80,
+            longitude: 111.50,
+            accuracyMeters: 12.4,
+          ),
+          reverseResult: ReverseGeocodeResult(
+            provinceHint: 'East Java',
+            cityHint: 'Kabupaten Ponorogo',
+            districtHint: 'Ponorogo',
+            villageHint: 'Mangkujayan',
+          ),
+        ),
+        regionRepository: _NullLookupRegionRepository(),
+      ).execute(fallbackRegion: _sampleRegion);
+      expect(preciseEastJavaRes.isGpsSuccess, true);
+      expect(preciseEastJavaRes.region?.provinsi, 'Jawa Timur');
+      expect(preciseEastJavaRes.region?.displayTitle, 'Mangkujayan');
+      expect(preciseEastJavaRes.statusMessage, contains('±12 m'));
+
+      // Far (>25 km) from presets with empty reverse geocode must NOT mislabel as Dinoyo.
+      final farUnknownRes = await ResolveGpsRegionUseCase(
+        locationProvider: const _StaticLocationProvider(
+          GeoFixResult(
+            latitude: -7.80,
+            longitude: 111.50,
+            accuracyMeters: 18.0,
+          ),
+        ),
+        regionRepository: _NullLookupRegionRepository(),
+      ).execute(fallbackRegion: _sampleRegion);
+      expect(farUnknownRes.isGpsSuccess, true);
+      expect(farUnknownRes.region?.displayTitle, 'Lokasi GPS');
+      expect(farUnknownRes.region?.latitude, -7.80);
+      expect(farUnknownRes.region?.longitude, 111.50);
     });
   });
 
@@ -834,6 +918,8 @@ class _FakeRegionRepository implements IRegionRepository {
     required double longitude,
     String? adminAreaHint,
     String? subAdminAreaHint,
+    String? districtHint,
+    String? villageHint,
     String? localityHint,
   }) async =>
       _sampleRegion;
@@ -895,10 +981,36 @@ class _FakeStorageRepository implements IStorageRepository {
   }
 }
 
+class _NullLookupRegionRepository extends _FakeRegionRepository {
+  @override
+  Future<RegionEntity?> resolveByCoordinates({
+    required double latitude,
+    required double longitude,
+    String? adminAreaHint,
+    String? subAdminAreaHint,
+    String? districtHint,
+    String? villageHint,
+    String? localityHint,
+  }) async =>
+      null;
+}
+
 class _FakeLocationProvider implements ILocationProvider {
   @override
   Future<GeoFixResult?> getCurrentCoordinates() async =>
       const GeoFixResult(latitude: -7.9439, longitude: 112.6152);
+
+  @override
+  Future<GeoLocationAttempt> acquireCurrentLocation() async =>
+      const GeoLocationAttempt.success(
+        GeoFixResult(latitude: -7.9439, longitude: 112.6152),
+      );
+
+  @override
+  Future<bool> openLocationSettings() async => true;
+
+  @override
+  Future<bool> openAppSettings() async => true;
 
   @override
   Future<ReverseGeocodeResult?> reverseGeocode(
@@ -923,11 +1035,47 @@ class _StaticLocationProvider implements ILocationProvider {
   Future<GeoFixResult?> getCurrentCoordinates() async => fix;
 
   @override
+  Future<GeoLocationAttempt> acquireCurrentLocation() async => fix != null
+      ? GeoLocationAttempt.success(fix!)
+      : const GeoLocationAttempt.failure(GpsErrorType.unknown);
+
+  @override
+  Future<bool> openLocationSettings() async => true;
+
+  @override
+  Future<bool> openAppSettings() async => true;
+
+  @override
   Future<ReverseGeocodeResult?> reverseGeocode(
     double latitude,
     double longitude,
   ) async =>
       reverseResult;
+}
+
+class _FailingLocationProvider implements ILocationProvider {
+  final GeoLocationAttempt attempt;
+
+  const _FailingLocationProvider(this.attempt);
+
+  @override
+  Future<GeoFixResult?> getCurrentCoordinates() async => null;
+
+  @override
+  Future<GeoLocationAttempt> acquireCurrentLocation() async => attempt;
+
+  @override
+  Future<bool> openLocationSettings() async => true;
+
+  @override
+  Future<bool> openAppSettings() async => true;
+
+  @override
+  Future<ReverseGeocodeResult?> reverseGeocode(
+    double latitude,
+    double longitude,
+  ) async =>
+      null;
 }
 
 class _FakeNotificationDispatcher implements INotificationDispatcher {

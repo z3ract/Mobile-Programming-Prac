@@ -37,6 +37,35 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
   bool _showNowcastPolygons = true;
   bool _showUserLocation = true;
   LatLng? _tappedPoint;
+  Worker? _regionWorker;
+
+  @override
+  void initState() {
+    super.initState();
+    if (Get.isRegistered<AtmosphereController>()) {
+      _regionWorker = ever<RegionEntity>(
+        Get.find<AtmosphereController>().activeRegion,
+        (region) {
+          if (!mounted) return;
+          try {
+            _mapController.move(
+              LatLng(region.latitude, region.longitude),
+              region.isGpsResolved ? 13.5 : 7.5,
+            );
+          } catch (_) {
+            // Safe no-op before FlutterMap controller binds to its viewport.
+          }
+        },
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _regionWorker?.dispose();
+    _mapController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -214,7 +243,10 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
                             message: 'Pusatkan ke lokasi aktif',
                             child: InkWell(
                               onTap: () {
-                                _mapController.move(userCenter, 5.5);
+                                _mapController.move(
+                                  userCenter,
+                                  activeRegion.isGpsResolved ? 13.5 : 6.5,
+                                );
                               },
                               borderRadius: BorderRadius.circular(22),
                               child: Container(

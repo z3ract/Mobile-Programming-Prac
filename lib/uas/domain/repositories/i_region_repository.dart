@@ -15,6 +15,8 @@ abstract interface class IRegionRepository {
     required double longitude,
     String? adminAreaHint,
     String? subAdminAreaHint,
+    String? districtHint,
+    String? villageHint,
     String? localityHint,
   });
 }

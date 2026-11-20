@@ -33,6 +33,7 @@ class AtmosphereController extends GetxController {
   final RxBool useFahrenheit = false.obs;
   final RxnString errorMessage = RxnString();
   final RxnString gpsNotice = RxnString();
+  final Rx<GpsErrorType> gpsErrorType = GpsErrorType.none.obs;
 
   void toggleTemperatureUnit() => useFahrenheit.value = !useFahrenheit.value;
 
@@ -85,6 +86,7 @@ class AtmosphereController extends GetxController {
 
   Future<void> selectRegion(RegionEntity region) async {
     gpsNotice.value = null;
+    gpsErrorType.value = GpsErrorType.none;
     activeRegion.value = region;
     await _manageRegionsUseCase.setActiveRegion(region);
     await refreshWeather(force: true);
@@ -149,21 +151,34 @@ class AtmosphereController extends GetxController {
   Future<void> detectGpsLocation() async {
     isResolvingGps.value = true;
     gpsNotice.value = null;
+    gpsErrorType.value = GpsErrorType.none;
 
     try {
       final resolution = await _resolveGpsUseCase.execute(
         fallbackRegion: activeRegion.value,
       );
       gpsNotice.value = resolution.statusMessage;
+      gpsErrorType.value = resolution.errorType;
 
       if (resolution.isGpsSuccess && resolution.region != null) {
         activeRegion.value = resolution.region!;
         await _manageRegionsUseCase.setActiveRegion(resolution.region!);
         await refreshWeather(force: true);
       }
+    } catch (e) {
+      gpsErrorType.value = GpsErrorType.unknown;
+      gpsNotice.value = 'Gagal mendeteksi lokasi GPS: $e';
     } finally {
       isResolvingGps.value = false;
     }
+  }
+
+  Future<void> openGpsSettings() async {
+    await _locationProvider?.openLocationSettings();
+  }
+
+  Future<void> openAppLocationSettings() async {
+    await _locationProvider?.openAppSettings();
   }
 
   Future<void> toggleFavorite(RegionEntity region) async {

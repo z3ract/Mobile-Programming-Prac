@@ -5,6 +5,7 @@ import '../../adapters/controllers/atmosphere_controller.dart';
 import '../../adapters/controllers/seismic_controller.dart';
 import '../../domain/entities/region_entity.dart';
 import '../../domain/entities/weather_entity.dart';
+import '../../domain/services/i_location_provider.dart';
 import '../../domain/utils/meteorology_calculator.dart';
 import '../../infrastructure/config/bmkg_api_config.dart';
 import '../theme/app_colors.dart';
@@ -61,6 +62,7 @@ class WeatherHomeScreen extends StatelessWidget {
             final isLoading = atmosphereCtrl.isLoading.value;
             final error = atmosphereCtrl.errorMessage.value;
             final gpsNotice = atmosphereCtrl.gpsNotice.value;
+            final gpsError = atmosphereCtrl.gpsErrorType.value;
             final useFahrenheit = atmosphereCtrl.useFahrenheit.value;
 
             return ListView(
@@ -84,9 +86,23 @@ class WeatherHomeScreen extends StatelessWidget {
                 if (gpsNotice != null && gpsNotice.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   _buildNoticeBanner(
-                    icon: Icons.info_outline_rounded,
-                    color: AppColors.tertiary,
+                    icon: gpsError == GpsErrorType.none
+                        ? Icons.info_outline_rounded
+                        : Icons.gps_off_rounded,
+                    color: gpsError == GpsErrorType.none
+                        ? AppColors.tertiary
+                        : AppColors.secondary,
                     message: gpsNotice,
+                    actionLabel: gpsError == GpsErrorType.serviceDisabled
+                        ? 'Buka Pengaturan GPS'
+                        : (gpsError == GpsErrorType.permissionDeniedForever
+                            ? 'Buka Pengaturan Izin'
+                            : null),
+                    onAction: gpsError == GpsErrorType.serviceDisabled
+                        ? atmosphereCtrl.openGpsSettings
+                        : (gpsError == GpsErrorType.permissionDeniedForever
+                            ? atmosphereCtrl.openAppLocationSettings
+                            : null),
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -646,21 +662,42 @@ class WeatherHomeScreen extends StatelessWidget {
     required IconData icon,
     required Color color,
     required String message,
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
     return GlassCard(
       borderRadius: 16,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       borderColor: color.withValues(alpha: 0.42),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: AppTypography.labelCompact(color: AppColors.onSurface),
-            ),
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  message,
+                  style: AppTypography.labelCompact(color: AppColors.onSurface),
+                ),
+              ),
+            ],
           ),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: onAction,
+              icon: const Icon(Icons.settings_rounded, size: 15),
+              label: Text(actionLabel),
+              style: TextButton.styleFrom(
+                foregroundColor: color,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: const Size(0, 34),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ],
         ],
       ),
     );
