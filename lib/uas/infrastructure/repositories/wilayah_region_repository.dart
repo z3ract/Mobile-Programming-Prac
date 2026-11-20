@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../adapters/dtos/open_meteo_geocoding_dto.dart';
 import '../../adapters/dtos/wilayah_dto.dart';
 import '../../domain/entities/region_entity.dart';
 import '../../domain/repositories/i_region_repository.dart';
@@ -6,7 +7,8 @@ import '../../domain/utils/meteorology_calculator.dart';
 import '../config/bmkg_api_config.dart';
 import '../http/bmkg_http_client.dart';
 
-/// Resolves Indonesian Kemendagri ADM1-ADM4 codes via wilayah.id and O(1) verified presets.
+/// Resolves Indonesian Kemendagri ADM1-ADM4 codes via wilayah.id, curated presets,
+/// and live global city search via Open-Meteo Geocoding API.
 class WilayahRegionRepository implements IRegionRepository {
   final BmkgHttpClient _httpClient;
   final BmkgApiConfig _config;
@@ -216,6 +218,134 @@ class WilayahRegionRepository implements IRegionRepository {
       longitude: 140.7181,
       timezone: 'Asia/Jayapura',
     ),
+    'GLOBAL:JP:1850147': RegionEntity(
+      adm1: 'JP',
+      adm2: 'Tokyo',
+      adm3: 'Tokyo',
+      adm4: 'GLOBAL:JP:1850147',
+      provinsi: 'Tokyo',
+      kotkab: 'Tokyo',
+      kecamatan: 'Shinjuku',
+      desa: 'Tokyo',
+      latitude: 35.6762,
+      longitude: 139.6503,
+      timezone: 'Asia/Tokyo',
+      country: 'Japan',
+      countryCode: 'JP',
+      isGlobal: true,
+    ),
+    'GLOBAL:SG:1880252': RegionEntity(
+      adm1: 'SG',
+      adm2: 'Singapore',
+      adm3: 'Central',
+      adm4: 'GLOBAL:SG:1880252',
+      provinsi: 'Singapore',
+      kotkab: 'Singapore',
+      kecamatan: 'Marina Bay',
+      desa: 'Singapore',
+      latitude: 1.3521,
+      longitude: 103.8198,
+      timezone: 'Asia/Singapore',
+      country: 'Singapore',
+      countryCode: 'SG',
+      isGlobal: true,
+    ),
+    'GLOBAL:MY:1735161': RegionEntity(
+      adm1: 'MY',
+      adm2: 'Kuala Lumpur',
+      adm3: 'Kuala Lumpur',
+      adm4: 'GLOBAL:MY:1735161',
+      provinsi: 'WP Kuala Lumpur',
+      kotkab: 'Kuala Lumpur',
+      kecamatan: 'City Centre',
+      desa: 'Kuala Lumpur',
+      latitude: 3.1390,
+      longitude: 101.6869,
+      timezone: 'Asia/Kuala_Lumpur',
+      country: 'Malaysia',
+      countryCode: 'MY',
+      isGlobal: true,
+    ),
+    'GLOBAL:SA:104515': RegionEntity(
+      adm1: 'SA',
+      adm2: 'Makkah',
+      adm3: 'Makkah',
+      adm4: 'GLOBAL:SA:104515',
+      provinsi: 'Makkah Region',
+      kotkab: 'Makkah',
+      kecamatan: 'Al Haram',
+      desa: 'Makkah',
+      latitude: 21.4225,
+      longitude: 39.8262,
+      timezone: 'Asia/Riyadh',
+      country: 'Saudi Arabia',
+      countryCode: 'SA',
+      isGlobal: true,
+    ),
+    'GLOBAL:GB:2643743': RegionEntity(
+      adm1: 'GB',
+      adm2: 'Greater London',
+      adm3: 'London',
+      adm4: 'GLOBAL:GB:2643743',
+      provinsi: 'England',
+      kotkab: 'London',
+      kecamatan: 'Westminster',
+      desa: 'London',
+      latitude: 51.5074,
+      longitude: -0.1278,
+      timezone: 'Europe/London',
+      country: 'United Kingdom',
+      countryCode: 'GB',
+      isGlobal: true,
+    ),
+    'GLOBAL:US:5128581': RegionEntity(
+      adm1: 'US',
+      adm2: 'New York',
+      adm3: 'Manhattan',
+      adm4: 'GLOBAL:US:5128581',
+      provinsi: 'New York',
+      kotkab: 'New York',
+      kecamatan: 'Midtown',
+      desa: 'New York',
+      latitude: 40.7128,
+      longitude: -74.0060,
+      timezone: 'America/New_York',
+      country: 'United States',
+      countryCode: 'US',
+      isGlobal: true,
+    ),
+    'GLOBAL:AU:2147714': RegionEntity(
+      adm1: 'AU',
+      adm2: 'New South Wales',
+      adm3: 'Sydney',
+      adm4: 'GLOBAL:AU:2147714',
+      provinsi: 'New South Wales',
+      kotkab: 'Sydney',
+      kecamatan: 'Sydney CBD',
+      desa: 'Sydney',
+      latitude: -33.8688,
+      longitude: 151.2093,
+      timezone: 'Australia/Sydney',
+      country: 'Australia',
+      countryCode: 'AU',
+      isGlobal: true,
+    ),
+    'GLOBAL:KR:1835848': RegionEntity(
+      adm1: 'KR',
+      adm2: 'Seoul',
+      adm3: 'Jung-gu',
+      adm4: 'GLOBAL:KR:1835848',
+      provinsi: 'Seoul',
+      kotkab: 'Seoul',
+      kecamatan: 'Seoul',
+      desa: 'Seoul',
+      latitude: 37.5665,
+      longitude: 126.9780,
+      timezone: 'Asia/Seoul',
+      country: 'South Korea',
+      countryCode: 'KR',
+      isGlobal: true,
+    ),
   };
 
   @override
@@ -229,7 +359,7 @@ class WilayahRegionRepository implements IRegionRepository {
     RegionEntity best = getDefaultRegion();
     double bestDistance = double.infinity;
 
-    for (final preset in _presetRegistry.values) {
+    for (final preset in _presetRegistry.values.where((r) => !r.isGlobal)) {
       final km = MeteorologyCalculator.calculateDistanceKm(
         latitude,
         longitude,
@@ -242,6 +372,20 @@ class WilayahRegionRepository implements IRegionRepository {
       }
     }
     return best;
+  }
+
+  @override
+  Future<List<RegionEntity>> searchGlobalRegions(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.length < 2) return const [];
+    final body = await _httpClient.getBody(
+      _config.openMeteoGeocodingUri(trimmed),
+      ttl: _config.wilayahCacheTtl,
+      acceptHeader: 'application/json',
+    );
+    return OpenMeteoGeocodingDto.parseSearchResponse(
+      json.decode(body) as Map<String, dynamic>,
+    );
   }
 
   @override

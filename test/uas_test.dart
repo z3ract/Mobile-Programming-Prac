@@ -3,6 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:master_repo/uas/adapters/dtos/bmkg_earthquake_dto.dart';
 import 'package:master_repo/uas/adapters/dtos/bmkg_weather_dto.dart';
+import 'package:master_repo/uas/adapters/dtos/open_meteo_geocoding_dto.dart';
+import 'package:master_repo/uas/adapters/dtos/open_meteo_weather_dto.dart';
+import 'package:master_repo/uas/adapters/dtos/usgs_earthquake_dto.dart';
 import 'package:master_repo/uas/domain/entities/earthquake_entity.dart';
 import 'package:master_repo/uas/domain/entities/notification_preference_entity.dart';
 import 'package:master_repo/uas/domain/entities/nowcast_alert_entity.dart';
@@ -222,8 +225,121 @@ void main() {
       expect(MeteorologyCalculator.isWithinIndonesiaBounds(-7.94, 112.61), true);
       expect(MeteorologyCalculator.isWithinIndonesiaBounds(37.33, -122.03), false);
       expect(MeteorologyCalculator.windDirectionLabel('ESE'), 'Timur Tenggara');
+      expect(MeteorologyCalculator.degreeToWindCode(0), 'N');
+      expect(MeteorologyCalculator.degreeToWindCode(90), 'E');
+      expect(MeteorologyCalculator.degreeToWindCode(135), 'SE');
+      expect(MeteorologyCalculator.oppositeWindCode(135), 'NW');
       expect(MeteorologyCalculator.calculateDewPointC(30, 80), greaterThan(25));
       expect(MeteorologyCalculator.calculateFeelsLikeC(34, 70), greaterThan(34));
+    });
+
+    test('OpenMeteoWeatherDto parses current, upcoming hourly, daily & local timezone', () {
+      final sampleOpenMeteo = {
+        'timezone': 'Asia/Tokyo',
+        'utc_offset_seconds': 32400,
+        'current': {
+          'time': '2026-11-21T20:00',
+          'temperature_2m': 14.5,
+          'relative_humidity_2m': 68,
+          'precipitation': 0.0,
+          'weather_code': 2,
+          'cloud_cover': 45,
+          'wind_speed_10m': 12.0,
+          'wind_direction_10m': 90,
+        },
+        'hourly': {
+          'time': [
+            '2026-11-21T19:00',
+            '2026-11-21T20:00',
+            '2026-11-21T21:00',
+          ],
+          'temperature_2m': [15.0, 14.5, 13.8],
+          'relative_humidity_2m': [66, 68, 72],
+          'precipitation': [0.0, 0.0, 0.4],
+          'weather_code': [1, 2, 61],
+          'cloud_cover': [30, 45, 80],
+          'visibility': [10000, 9000, 6000],
+          'wind_speed_10m': [10.0, 12.0, 14.0],
+          'wind_direction_10m': [90, 90, 135],
+        },
+        'daily': {
+          'time': ['2026-11-21', '2026-11-22'],
+          'weather_code': [2, 61],
+          'temperature_2m_max': [18.0, 16.0],
+          'temperature_2m_min': [11.0, 10.0],
+          'precipitation_sum': [0.4, 5.2],
+        },
+      };
+
+      final forecast = OpenMeteoWeatherDto.fromOpenMeteoJson(
+        sampleOpenMeteo,
+        region: _tokyoRegion,
+        sourceAttribution: 'Sumber Data Cuaca: Open-Meteo (Global Weather API)',
+        referenceTime: DateTime(2026, 11, 21, 20, 0),
+      );
+
+      expect(forecast.region.timezone, 'Asia/Tokyo');
+      expect(forecast.current.tempC, 14.5);
+      expect(forecast.current.isNightTime, true);
+      expect(forecast.current.windDirection, 'E');
+      expect(forecast.current.windDirectionTo, 'W');
+      expect(forecast.current.visibilityText, '9 km');
+      expect(forecast.slots.length, 2);
+      expect(forecast.slots.first.timeLabel, '20:00');
+      expect(forecast.daily.length, 2);
+      expect(forecast.daily.first.dayLabel, 'Hari ini');
+      expect(forecast.daily.first.maxTempC, 18.0);
+    });
+
+    test('OpenMeteoGeocodingDto and UsgsEarthquakeDto parse global search & USGS GeoJSON', () {
+      final geoJson = {
+        'results': [
+          {
+            'id': 1850147,
+            'name': 'Tokyo',
+            'latitude': 35.6895,
+            'longitude': 139.6917,
+            'country': 'Jepang',
+            'country_code': 'JP',
+            'admin1': 'Tokyo',
+            'timezone': 'Asia/Tokyo',
+          },
+        ],
+      };
+
+      final regions = OpenMeteoGeocodingDto.parseSearchResponse(geoJson);
+      expect(regions.length, 1);
+      expect(regions.first.adm4, 'GLOBAL:JP:1850147');
+      expect(regions.first.isGlobal, true);
+      expect(regions.first.isIndonesianAdm4, false);
+      expect(regions.first.country, 'Jepang');
+
+      final usgsJson = {
+        'features': [
+          {
+            'properties': {
+              'mag': 5.4,
+              'place': '42 km SE of Chiba, Japan',
+              'time': 1795184100000,
+              'tsunami': 0,
+              'mmi': 4.2,
+              'url': 'https://earthquake.usgs.gov/earthquakes/eventpage/test1',
+            },
+            'geometry': {
+              'coordinates': [139.8, 35.6, 45.0],
+            },
+          },
+        ],
+      };
+
+      final quakes = UsgsEarthquakeDto.parseFeatureCollection(usgsJson);
+      expect(quakes.length, 1);
+      expect(quakes.first.source, 'USGS');
+      expect(quakes.first.isGlobalSource, true);
+      expect(quakes.first.latitude, 35.6);
+      expect(quakes.first.longitude, 139.8);
+      expect(quakes.first.kedalaman, '45 km');
+      expect(quakes.first.magnitude, '5.4');
     });
 
     test('WeatherCodeRegistry & AtmosphereThemeRegistry map codes in O(1)', () {
@@ -299,16 +415,25 @@ void main() {
 
       final outsideUseCase = ResolveGpsRegionUseCase(
         locationProvider: _StaticLocationProvider(
-          const GeoFixResult(latitude: 37.33, longitude: -122.03),
+          const GeoFixResult(latitude: 35.6762, longitude: 139.6503),
+          reverseResult: const ReverseGeocodeResult(
+            cityHint: 'Tokyo',
+            provinceHint: 'Tokyo',
+            countryHint: 'Japan',
+            countryCodeHint: 'JP',
+          ),
         ),
         regionRepository: regionRepo,
       );
       final outsideRes = await outsideUseCase.execute(
         fallbackRegion: _sampleRegion,
       );
-      expect(outsideRes.isGpsSuccess, false);
+      expect(outsideRes.isGpsSuccess, true);
       expect(outsideRes.isOutsideIndonesia, true);
-      expect(outsideRes.region?.adm4, _sampleRegion.adm4);
+      expect(outsideRes.region?.isGlobal, true);
+      expect(outsideRes.region?.latitude, 35.6762);
+      expect(outsideRes.region?.longitude, 139.6503);
+      expect(outsideRes.region?.displayTitle, 'Tokyo');
 
       final insideUseCase = ResolveGpsRegionUseCase(
         locationProvider: _FakeLocationProvider(),
@@ -369,37 +494,48 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('30'), findsOneWidget);
 
-        // Open LocationManagerScreen from city selector header
+        // Open LocationManagerScreen from city selector header & test global search
         await tester.tap(find.byKey(const Key('weather_location_button')));
         await tester.pumpAndSettle();
-        expect(find.text('Lokasi & Wilayah BMKG'), findsOneWidget);
+        expect(find.text('Lokasi Global & Wilayah'), findsOneWidget);
         expect(find.text('Deteksi Lokasi GPS Otomatis'), findsOneWidget);
 
-        // Return back to Cuaca and scroll down to verify BMKG attribution footer
-        await tester.tap(find.byIcon(Icons.arrow_back_ios_new_rounded));
+        await tester.enterText(find.byType(TextField).first, 'Tokyo');
+        await tester.pump(const Duration(milliseconds: 450));
         await tester.pumpAndSettle();
+        expect(find.text('HASIL PENCARIAN DUNIA'), findsOneWidget);
+        expect(find.text('Tokyo'), findsWidgets);
+
+        await tester.tap(find.text('Tokyo').last);
+        await tester.pumpAndSettle();
+        expect(find.text('Tokyo'), findsWidgets);
+
         await tester.drag(
           find.byType(ListView).first,
           const Offset(0, -600),
         );
         await tester.pumpAndSettle();
         expect(
-          find.textContaining(
-            'BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)',
-          ),
+          find.textContaining('Open-Meteo'),
           findsWidgets,
         );
 
-        // Tab 2: Seismik
+        // Tab 2: Seismik (BMKG + USGS Global)
         await tester.tap(find.text('Seismik'));
         await tester.pumpAndSettle();
         expect(find.text('Aktivitas Seismik'), findsOneWidget);
-        expect(find.text('Magnitudo 5.0+'), findsOneWidget);
+        expect(find.text('BMKG M5.0+'), findsOneWidget);
+        expect(find.text('Global (USGS)'), findsOneWidget);
+
+        await tester.tap(find.text('Global (USGS)'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('Tokyo Bay, Japan'), findsOneWidget);
 
         // Tab 3: Peta
         await tester.tap(find.text('Peta'));
         await tester.pumpAndSettle();
-        expect(find.text('Peta Interaktif Nusantara'), findsOneWidget);
+        expect(find.text('Peta Interaktif Global'), findsOneWidget);
+        expect(find.text('USGS Global (1)'), findsOneWidget);
 
         // Tab 4: Peringatan + Uji Notifikasi
         await tester.tap(find.text('Peringatan'));
@@ -415,7 +551,12 @@ void main() {
         // Tab 5: Stasiun
         await tester.tap(find.text('Stasiun'));
         await tester.pumpAndSettle();
-        expect(find.text('Jaringan Stasiun BMKG'), findsOneWidget);
+        expect(find.text('Stasiun Global & BMKG'), findsOneWidget);
+        await tester.drag(
+          find.byType(ListView).last,
+          const Offset(0, -1000),
+        );
+        await tester.pumpAndSettle();
         expect(find.text('Proyek UAS Praktikum Mobile'), findsOneWidget);
       },
     );
@@ -491,6 +632,23 @@ const RegionEntity _sampleRegion = RegionEntity(
   longitude: 112.6152,
 );
 
+const RegionEntity _tokyoRegion = RegionEntity(
+  adm1: 'JP',
+  adm2: 'Tokyo',
+  adm3: 'Shinjuku',
+  adm4: 'GLOBAL:JP:1850147',
+  provinsi: 'Tokyo',
+  kotkab: 'Tokyo',
+  kecamatan: 'Shinjuku',
+  desa: 'Tokyo',
+  latitude: 35.6762,
+  longitude: 139.6503,
+  timezone: 'Asia/Tokyo',
+  country: 'Japan',
+  countryCode: 'JP',
+  isGlobal: true,
+);
+
 const EarthquakeEntity _sampleEarthquake = EarthquakeEntity(
   tanggal: '20 Nov 2026',
   jam: '14:15:00 WIB',
@@ -502,6 +660,19 @@ const EarthquakeEntity _sampleEarthquake = EarthquakeEntity(
   wilayah: '45 km BaratDaya Kab. Malang, Jawa Timur',
   potensi: 'Tidak berpotensi tsunami',
   dirasakan: 'III-IV Malang',
+);
+
+const EarthquakeEntity _sampleGlobalEarthquake = EarthquakeEntity(
+  tanggal: '21 Nov 2026',
+  jam: '06:10:00',
+  coordinates: '35.50,140.10',
+  lintang: '35.50 LU',
+  bujur: '140.10 BT',
+  magnitude: '5.2',
+  kedalaman: '35 km',
+  wilayah: '25 km SE of Tokyo Bay, Japan',
+  potensi: 'Tidak ada peringatan tsunami USGS',
+  source: 'USGS',
 );
 
 WeatherForecastEntity _sampleForecast({
@@ -546,8 +717,7 @@ WeatherForecastEntity _sampleForecast({
       ),
     ],
     fetchedAt: DateTime(2026, 11, 20, 15, 0),
-    sourceAttribution:
-        'Sumber Data: BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)',
+    sourceAttribution: 'Sumber Data Cuaca: Open-Meteo (Global Weather API)',
   );
 }
 
@@ -577,6 +747,12 @@ class _FakeEarthquakeRepository implements IEarthquakeRepository {
     bool forceRefresh = false,
   }) async =>
       const [_sampleEarthquake];
+
+  @override
+  Future<List<EarthquakeEntity>> fetchGlobalEarthquakes({
+    bool forceRefresh = false,
+  }) async =>
+      const [_sampleGlobalEarthquake];
 }
 
 class _FakeNowcastRepository implements INowcastRepository {
@@ -642,7 +818,15 @@ class _FakeRegionRepository implements IRegionRepository {
   RegionEntity getDefaultRegion() => _sampleRegion;
 
   @override
-  List<RegionEntity> getPresetRegions() => const [_sampleRegion];
+  List<RegionEntity> getPresetRegions() => const [_sampleRegion, _tokyoRegion];
+
+  @override
+  Future<List<RegionEntity>> searchGlobalRegions(String query) async {
+    if (query.toLowerCase().contains('tokyo')) {
+      return const [_tokyoRegion];
+    }
+    return const [];
+  }
 
   @override
   Future<RegionEntity?> resolveByCoordinates({
@@ -731,8 +915,9 @@ class _FakeLocationProvider implements ILocationProvider {
 
 class _StaticLocationProvider implements ILocationProvider {
   final GeoFixResult? fix;
+  final ReverseGeocodeResult? reverseResult;
 
-  const _StaticLocationProvider(this.fix);
+  const _StaticLocationProvider(this.fix, {this.reverseResult});
 
   @override
   Future<GeoFixResult?> getCurrentCoordinates() async => fix;
@@ -742,7 +927,7 @@ class _StaticLocationProvider implements ILocationProvider {
     double latitude,
     double longitude,
   ) async =>
-      null;
+      reverseResult;
 }
 
 class _FakeNotificationDispatcher implements INotificationDispatcher {

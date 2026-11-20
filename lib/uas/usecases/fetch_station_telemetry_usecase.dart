@@ -61,6 +61,36 @@ class FetchStationTelemetryUseCase {
       longitude: 108.9550,
       elevation: '12 mdpl',
     ),
+    BmkgStationEntity(
+      id: 'WMO-JP-01',
+      name: 'Tokyo Meteorological Observatory (JMA)',
+      type: 'Sinoptik & Jaringan Global WMO',
+      adm4: 'GLOBAL:JP:1850147',
+      locationLabel: 'Tokyo, Japan',
+      latitude: 35.6762,
+      longitude: 139.6503,
+      elevation: '36 mdpl',
+    ),
+    BmkgStationEntity(
+      id: 'WMO-GB-02',
+      name: 'London Synoptic Weather Station (Met Office)',
+      type: 'Sinoptik & Jaringan Global WMO',
+      adm4: 'GLOBAL:GB:2643743',
+      locationLabel: 'London, United Kingdom',
+      latitude: 51.5074,
+      longitude: -0.1278,
+      elevation: '25 mdpl',
+    ),
+    BmkgStationEntity(
+      id: 'WMO-US-03',
+      name: 'New York Central Park Observatory (NOAA)',
+      type: 'Klimatologi & Jaringan Global WMO',
+      adm4: 'GLOBAL:US:5128581',
+      locationLabel: 'New York, United States',
+      latitude: 40.7128,
+      longitude: -74.0060,
+      elevation: '40 mdpl',
+    ),
   ];
 
   Future<List<BmkgStationEntity>> execute({bool forceRefresh = false}) async {

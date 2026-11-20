@@ -68,14 +68,14 @@ class LocationManagerScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Lokasi & Wilayah BMKG',
+                              'Lokasi Global & Wilayah',
                               style: AppTypography.headlineMd(),
                               overflow: TextOverflow.ellipsis,
                             ),
                             Obx(() {
                               final active = atmosphereCtrl.activeRegion.value;
                               return Text(
-                                'Aktif: ${active.displayTitle} (ADM4 ${active.adm4})',
+                                'Aktif: ${active.displayTitle} (${active.locationCodeLabel})',
                                 style: AppTypography.tabularSm(
                                   color: AppColors.primary,
                                 ),
@@ -152,7 +152,7 @@ class LocationManagerScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Cocokkan koordinat perangkat ke kode ADM4 Indonesia',
+                        'Deteksi otomatis posisi perangkat di seluruh dunia',
                         style: AppTypography.labelCompact(),
                       ),
                     ],
@@ -252,7 +252,7 @@ class LocationManagerScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'CARI CEPAT KOTA INDONESIA (ADM4 TERVERIFIKASI)',
+          'CARI KOTA SELURUH DUNIA',
           style: AppTypography.labelUppercase(),
         ),
         const SizedBox(height: 8),
@@ -275,11 +275,14 @@ class LocationManagerScreen extends StatelessWidget {
               Expanded(
                 child: TextField(
                   controller: pickerCtrl.quickSearchController,
+                  textInputAction: TextInputAction.search,
                   onChanged: pickerCtrl.updateQuickSearch,
+                  onSubmitted: (_) => pickerCtrl.searchGlobalNow(),
                   style: AppTypography.bodyMd(color: AppColors.onSurface),
                   cursorColor: AppColors.onSurface,
                   decoration: InputDecoration(
-                    hintText: 'Ketik kota, kelurahan, provinsi, atau ADM4...',
+                    hintText:
+                        'Cari kota dunia (Tokyo, London) atau wilayah Indonesia...',
                     hintStyle: AppTypography.bodyMd(
                       color: AppColors.onSurfaceMuted,
                     ),
@@ -310,21 +313,97 @@ class LocationManagerScreen extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Obx(() {
-          final results = pickerCtrl.filteredPresets;
+          final query = pickerCtrl.quickSearchQuery.value;
+          final globalResults = pickerCtrl.globalSearchResults;
+          final isSearching = pickerCtrl.isSearchingGlobal.value;
+          final searchError = pickerCtrl.globalSearchError.value;
+          final presetResults = pickerCtrl.filteredPresets;
           final activeAdm4 = atmosphereCtrl.activeRegion.value.adm4;
-          if (results.isEmpty) {
-            return GlassCard(
-              padding: const EdgeInsets.all(14),
-              child: Text(
-                'Kota tidak ditemukan di daftar cepat. Gunakan Eksplorasi Wilayah di bawah untuk mencari seluruh kelurahan Indonesia.',
-                style: AppTypography.bodySm(),
-              ),
-            );
-          }
 
           return Column(
-            children: results
-                .map(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (query.length >= 2) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'HASIL PENCARIAN DUNIA',
+                      style: AppTypography.labelUppercase(
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    if (isSearching)
+                      const SizedBox(
+                        width: 15,
+                        height: 15,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (searchError != null)
+                  GlassCard(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            searchError,
+                            style: AppTypography.bodySm(color: AppColors.error),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: pickerCtrl.searchGlobalNow,
+                          child: const Text('Coba Lagi'),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (!isSearching && globalResults.isEmpty)
+                  GlassCard(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(14),
+                    child: Text(
+                      'Tidak ada hasil geocoding global untuk "$query".',
+                      style: AppTypography.bodySm(),
+                    ),
+                  )
+                else
+                  ...globalResults.map(
+                    (region) => _buildRegionTile(
+                      context: context,
+                      region: region,
+                      isActive: region.adm4 == activeAdm4,
+                      isFavorite: atmosphereCtrl.isFavorite(region.adm4),
+                      onSelect: () async {
+                        await atmosphereCtrl.selectRegion(region);
+                        if (context.mounted) Navigator.pop(context);
+                      },
+                      onToggleFav: () => atmosphereCtrl.toggleFavorite(region),
+                    ),
+                  ),
+                const SizedBox(height: 6),
+              ],
+              Text(
+                'KOTA POPULER INDONESIA & DUNIA',
+                style: AppTypography.labelUppercase(),
+              ),
+              const SizedBox(height: 8),
+              if (presetResults.isEmpty)
+                GlassCard(
+                  padding: const EdgeInsets.all(14),
+                  child: Text(
+                    'Tidak ada kota populer yang cocok. Coba hasil pencarian dunia di atas atau pilih dari Peta.',
+                    style: AppTypography.bodySm(),
+                  ),
+                )
+              else
+                ...presetResults.map(
                   (region) => _buildRegionTile(
                     context: context,
                     region: region,
@@ -336,8 +415,8 @@ class LocationManagerScreen extends StatelessWidget {
                     },
                     onToggleFav: () => atmosphereCtrl.toggleFavorite(region),
                   ),
-                )
-                .toList(),
+                ),
+            ],
           );
         }),
       ],
@@ -552,14 +631,18 @@ class LocationManagerScreen extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  '${region.displaySubtitle} · ${region.provinsi}',
+                  region.isIndonesianAdm4
+                      ? '${region.displaySubtitle} · ${region.provinsi}'
+                      : region.headerSubtitle,
                   style: AppTypography.labelCompact(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Kode ADM4: ${region.adm4}',
+                  region.isIndonesianAdm4
+                      ? 'Kode ADM4: ${region.adm4}'
+                      : '${region.country} · ${region.locationCodeLabel}',
                   style: AppTypography.tabularSm(color: AppColors.tertiary)
                       .copyWith(fontSize: 11.5),
                 ),

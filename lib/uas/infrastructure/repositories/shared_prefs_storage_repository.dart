@@ -100,7 +100,7 @@ class SharedPrefsStorageRepository implements IStorageRepository {
       final decoded = json.decode(raw) as Map<String, dynamic>;
       return BmkgWeatherDto.fromCacheJson(
         decoded,
-        defaultAttribution: _config.bmkgAttribution,
+        defaultAttribution: _config.openMeteoAttribution,
       );
     } catch (_) {
       return null;

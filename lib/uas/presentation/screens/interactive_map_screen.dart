@@ -7,6 +7,7 @@ import '../../adapters/controllers/atmosphere_controller.dart';
 import '../../adapters/controllers/seismic_controller.dart';
 import '../../adapters/controllers/station_controller.dart';
 import '../../domain/entities/earthquake_entity.dart';
+import '../../domain/entities/region_entity.dart';
 import '../../domain/entities/station_entity.dart';
 import '../../domain/utils/meteorology_calculator.dart';
 import '../../infrastructure/config/bmkg_api_config.dart';
@@ -31,9 +32,11 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
   final MapController _mapController = MapController();
 
   bool _showEarthquakes = true;
+  bool _showGlobalEarthquakes = true;
   bool _showStations = true;
   bool _showNowcastPolygons = true;
   bool _showUserLocation = true;
+  LatLng? _tappedPoint;
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +59,7 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
             activeRegion.longitude,
           );
           final quakes = seismicCtrl.gempaTerkini;
+          final globalQuakes = seismicCtrl.gempaGlobal;
           final stations = stationCtrl.stations;
           final polygonRings = alertCtrl.activePolygonRings;
           final useFahrenheit = atmosphereCtrl.useFahrenheit.value;
@@ -68,6 +72,9 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
                   options: MapOptions(
                     initialCenter: userCenter,
                     initialZoom: 5.2,
+                    minZoom: 2.0,
+                    maxZoom: 18.0,
+                    onTap: (_, latLng) => _handleMapTap(latLng, atmosphereCtrl),
                   ),
                   children: [
                     if (config.osmTileTemplate.isNotEmpty)
@@ -95,6 +102,13 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
                       ),
                     MarkerLayer(
                       markers: [
+                        if (_showGlobalEarthquakes)
+                          ..._buildEarthquakeMarkers(
+                            globalQuakes,
+                            activeRegion.latitude,
+                            activeRegion.longitude,
+                            activeRegion.displayTitle,
+                          ),
                         if (_showEarthquakes)
                           ..._buildEarthquakeMarkers(
                             quakes,
@@ -107,6 +121,27 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
                             stations,
                             atmosphereCtrl,
                             useFahrenheit,
+                          ),
+                        if (_tappedPoint != null)
+                          Marker(
+                            point: _tappedPoint!,
+                            width: 40,
+                            height: 40,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.secondary.withValues(alpha: 0.9),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2.5,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.pin_drop_rounded,
+                                color: Colors.black,
+                                size: 20,
+                              ),
+                            ),
                           ),
                         if (_showUserLocation)
                           Marker(
@@ -161,13 +196,13 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Peta Interaktif Nusantara',
+                                  'Peta Interaktif Global',
                                   style: AppTypography.headlineSm(),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Pusat: ${activeRegion.displayTitle} · ${quakes.length} Gempa · ${stations.length} Stasiun',
+                                  'Pusat: ${activeRegion.displayTitle} · ${quakes.length + globalQuakes.length} Gempa · ${stations.length} Stasiun',
                                   style: AppTypography.tabularSm(),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -218,11 +253,21 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
                             ),
                             const SizedBox(width: 6),
                             _buildFilterChip(
-                              label: 'Gempa (${quakes.length})',
+                              label: 'BMKG (${quakes.length})',
                               selected: _showEarthquakes,
                               color: AppColors.accentRose,
                               onTap: () => setState(
                                 () => _showEarthquakes = !_showEarthquakes,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            _buildFilterChip(
+                              label: 'USGS Global (${globalQuakes.length})',
+                              selected: _showGlobalEarthquakes,
+                              color: AppColors.secondary,
+                              onTap: () => setState(
+                                () => _showGlobalEarthquakes =
+                                    !_showGlobalEarthquakes,
                               ),
                             ),
                             const SizedBox(width: 6),
@@ -238,7 +283,7 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
                             _buildFilterChip(
                               label: 'Polygon CAP (${polygonRings.length})',
                               selected: _showNowcastPolygons,
-                              color: AppColors.secondary,
+                              color: AppColors.tertiary,
                               onTap: () => setState(
                                 () => _showNowcastPolygons =
                                     !_showNowcastPolygons,
@@ -256,9 +301,9 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
                 right: 16,
                 bottom: 98,
                 child: BmkgAttributionFooter(
-                  attributionText: config.bmkgAttribution,
+                  attributionText: 'Open-Meteo · BMKG TEWS · USGS',
                   detailLabel:
-                      'Ketuk marker gempa atau stasiun pada peta untuk inspeksi detail',
+                      'Ketuk peta mana saja untuk cek cuaca, atau ketuk marker gempa & stasiun',
                 ),
               ),
             ],
@@ -280,6 +325,7 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
       final lon = quake.longitude;
       if (lat == null || lon == null) continue;
       final magColor = AppColors.getMagnitudeColor(quake.magnitudeValue);
+      final ringColor = quake.isGlobalSource ? AppColors.secondary : magColor;
 
       markers.add(
         Marker(
@@ -295,15 +341,15 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
             ),
             child: Container(
               decoration: BoxDecoration(
-                color: magColor.withValues(alpha: 0.25),
+                color: ringColor.withValues(alpha: 0.25),
                 shape: BoxShape.circle,
-                border: Border.all(color: magColor, width: 2),
+                border: Border.all(color: ringColor, width: 2),
               ),
               child: Center(
                 child: Text(
                   quake.magnitude,
                   style: TextStyle(
-                    color: magColor,
+                    color: ringColor,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                   ),
@@ -436,7 +482,9 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    'M ${quake.magnitude} SR',
+                    quake.isGlobalSource
+                        ? 'USGS M ${quake.magnitude}'
+                        : 'BMKG M ${quake.magnitude} SR',
                     style: TextStyle(
                       color: magColor,
                       fontWeight: FontWeight.w800,
@@ -555,7 +603,7 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
                   final presets = atmosphereCtrl.presetRegions;
                   final match = presets.firstWhere(
                     (r) => r.adm4 == station.adm4,
-                    orElse: () => presets.first,
+                    orElse: () => _stationToRegion(station),
                   );
                   await atmosphereCtrl.selectRegion(match);
                   widget.onNavigateTab?.call(0);
@@ -566,6 +614,93 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _handleMapTap(
+    LatLng latLng,
+    AtmosphereController atmosphereCtrl,
+  ) {
+    setState(() {
+      _tappedPoint = latLng;
+    });
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'PANTAU CUACA KOORDINAT PETA',
+              style: AppTypography.labelUppercase(color: AppColors.primary),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Lat ${latLng.latitude.toStringAsFixed(4)}, Lon ${latLng.longitude.toStringAsFixed(4)}',
+              style: AppTypography.headlineSm(color: AppColors.onSurface),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Gunakan titik ini untuk mengambil prakiraan cuaca Open-Meteo secara langsung.',
+              style: AppTypography.bodySm(),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.22),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                ),
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await atmosphereCtrl.selectCoordinates(
+                    latitude: latLng.latitude,
+                    longitude: latLng.longitude,
+                  );
+                  widget.onNavigateTab?.call(0);
+                },
+                icon: const Icon(Icons.cloud_done_rounded, size: 18),
+                label: const Text('Pantau Cuaca Titik Ini'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  RegionEntity _stationToRegion(BmkgStationEntity st) {
+    final isGlobal = st.adm4.startsWith('GLOBAL:');
+    final segments = st.adm4.split('.');
+    return RegionEntity(
+      adm1: isGlobal ? st.adm4 : (segments.isNotEmpty ? segments[0] : '31'),
+      adm2: isGlobal
+          ? st.locationLabel
+          : (segments.length >= 2 ? '${segments[0]}.${segments[1]}' : '31.71'),
+      adm3: isGlobal
+          ? ''
+          : (segments.length >= 3
+              ? '${segments[0]}.${segments[1]}.${segments[2]}'
+              : '31.71.03'),
+      adm4: st.adm4,
+      provinsi: st.locationLabel,
+      kotkab: st.locationLabel,
+      kecamatan: st.name,
+      desa: st.locationLabel,
+      latitude: st.latitude,
+      longitude: st.longitude,
+      country: isGlobal ? st.locationLabel.split(',').last.trim() : 'Indonesia',
+      countryCode: isGlobal ? '' : 'ID',
+      isGlobal: isGlobal,
     );
   }
 }

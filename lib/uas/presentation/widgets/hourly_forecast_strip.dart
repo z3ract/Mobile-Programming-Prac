@@ -73,7 +73,7 @@ class _HourlyForecastStripState extends State<HourlyForecastStrip> {
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                        'PRAKIRAAN PER 3 JAM',
+                        'PRAKIRAAN PER JAM',
                         style: AppTypography.labelUppercase(),
                         overflow: TextOverflow.ellipsis,
                       ),

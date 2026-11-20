@@ -15,12 +15,16 @@ class ReverseGeocodeResult {
   final String? cityHint;
   final String? districtHint;
   final String? villageHint;
+  final String? countryHint;
+  final String? countryCodeHint;
 
   const ReverseGeocodeResult({
     this.provinceHint,
     this.cityHint,
     this.districtHint,
     this.villageHint,
+    this.countryHint,
+    this.countryCodeHint,
   });
 }
 

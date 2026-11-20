@@ -68,8 +68,11 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
                         const SizedBox(height: 3),
                         Obx(() {
                           final region = atmosphereCtrl.activeRegion.value;
+                          final areaLabel = region.isIndonesianAdm4
+                              ? region.provinsi
+                              : '${region.displayTitle}, ${region.country}';
                           return Text(
-                            'Nowcast CAP BMKG & Notifikasi · ${region.provinsi}',
+                            'Nowcast CAP BMKG & Notifikasi · $areaLabel',
                             style: AppTypography.bodySm(),
                             overflow: TextOverflow.ellipsis,
                           );
@@ -153,6 +156,7 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
   }
 
   Widget _buildNowcastTab(AlertController alertCtrl, BmkgApiConfig config) {
+    final atmosphereCtrl = Get.find<AtmosphereController>();
     return Obx(() {
       if (alertCtrl.isLoading.value && alertCtrl.nowcastItems.isEmpty) {
         return const Center(
@@ -160,6 +164,7 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
         );
       }
 
+      final activeRegion = atmosphereCtrl.activeRegion.value;
       final matching = alertCtrl.matchingProvinceNowcasts;
       final allItems = alertCtrl.nowcastItems;
 
@@ -173,6 +178,15 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
             parent: BouncingScrollPhysics(),
           ),
           children: [
+            if (!activeRegion.isIndonesianAdm4)
+              GlassCard(
+                margin: const EdgeInsets.only(bottom: 12),
+                borderColor: AppColors.primary.withValues(alpha: 0.45),
+                child: Text(
+                  'Peringatan Nowcast CAP BMKG khusus mencakup wilayah Indonesia. Evaluasi bahaya cuaca global (Open-Meteo) dan gempa tetap aktif di tab Evaluasi & Notifikasi.',
+                  style: AppTypography.bodySm(color: AppColors.onSurfaceSoft),
+                ),
+              ),
             if (alertCtrl.nowcastError.value != null)
               GlassCard(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -493,7 +507,10 @@ class _AlertCenterScreenState extends State<AlertCenterScreen>
             ),
           ),
           const SizedBox(height: 12),
-          BmkgAttributionFooter(attributionText: config.bmkgAttribution),
+          BmkgAttributionFooter(
+            attributionText:
+                '${config.openMeteoAttribution} · ${config.bmkgAttribution}',
+          ),
         ],
       );
     });

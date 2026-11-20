@@ -1,4 +1,4 @@
-/// Pure domain model representing an earthquake event from BMKG TEWS.
+/// Pure domain model representing an earthquake event from BMKG TEWS or USGS Global.
 class EarthquakeEntity {
   final String tanggal;
   final String jam;
@@ -12,6 +12,8 @@ class EarthquakeEntity {
   final String potensi;
   final String? dirasakan;
   final String? shakemap;
+  final String source;
+  final String? detailUrl;
 
   const EarthquakeEntity({
     required this.tanggal,
@@ -26,7 +28,11 @@ class EarthquakeEntity {
     required this.potensi,
     this.dirasakan,
     this.shakemap,
+    this.source = 'BMKG',
+    this.detailUrl,
   });
+
+  bool get isGlobalSource => source.toUpperCase() != 'BMKG';
 
   double get magnitudeValue => double.tryParse(magnitude.trim()) ?? 0.0;
 

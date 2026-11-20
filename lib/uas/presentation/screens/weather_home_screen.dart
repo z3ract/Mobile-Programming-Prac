@@ -137,13 +137,13 @@ class WeatherHomeScreen extends StatelessWidget {
                       attributionText: forecast.sourceAttribution,
                       isFromCache: forecast.fromCache,
                       detailLabel:
-                          'Wilayah ADM4 ${region.adm4} · Analisis ${forecast.current.timeLabel}',
+                          '${region.locationCodeLabel} · Analisis ${forecast.current.timeLabel}',
                     ),
                   ] else
                     Padding(
                       padding: const EdgeInsets.only(top: 16),
                       child: BmkgAttributionFooter(
-                        attributionText: config.bmkgAttribution,
+                        attributionText: config.openMeteoAttribution,
                       ),
                     ),
                 ],
@@ -213,7 +213,7 @@ class WeatherHomeScreen extends StatelessWidget {
                           ],
                         ),
                         Text(
-                          '${region.kotkab} · ${region.adm4}',
+                          region.headerSubtitle,
                           style: AppTypography.labelCompact(
                             color: AppColors.onSurfaceVariant,
                           ),
@@ -291,7 +291,7 @@ class WeatherHomeScreen extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         _buildCircleActionButton(
-          tooltip: 'Perbarui Data BMKG',
+          tooltip: 'Perbarui Data Cuaca & Gempa',
           onTap: () {
             atmosphereCtrl.refreshWeather(force: true);
             seismicCtrl.refreshAll(force: true);
@@ -462,7 +462,7 @@ class WeatherHomeScreen extends StatelessWidget {
     final int tempValue =
         slot != null ? atmosphereCtrl.convertTemp(slot.tempC) : 0;
     final String tempDisplay = slot != null ? '$tempValue' : '--';
-    final String descText = slot?.weatherDesc ?? 'Memuat data BMKG...';
+    final String descText = slot?.weatherDesc ?? 'Memuat data cuaca...';
     final String maxText = forecast != null
         ? '${atmosphereCtrl.convertTemp(forecast.tempMaxTodayC)}°'
         : '--';
@@ -534,7 +534,9 @@ class WeatherHomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '${region.kecamatan}, ${region.provinsi}',
+            region.isIndonesianAdm4
+                ? '${region.kecamatan}, ${region.provinsi}'
+                : '${region.country} · ${region.locationCodeLabel}',
             style: AppTypography.labelCompact(color: AppColors.onSurfaceMuted),
             textAlign: TextAlign.center,
             maxLines: 1,

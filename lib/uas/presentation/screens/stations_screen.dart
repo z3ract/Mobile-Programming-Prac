@@ -51,7 +51,7 @@ class StationsScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Jaringan Stasiun BMKG',
+                            'Stasiun Global & BMKG',
                             style: AppTypography.headlineLg(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -160,7 +160,10 @@ class StationsScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 _buildUasInfoCard(),
                 const SizedBox(height: 14),
-                BmkgAttributionFooter(attributionText: config.bmkgAttribution),
+                BmkgAttributionFooter(
+                  attributionText:
+                      '${config.openMeteoAttribution} · ${config.bmkgAttribution}',
+                ),
               ],
             ),
           );
@@ -396,7 +399,7 @@ class StationsScreen extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      'Evolusi TerraCast: Data Dummy UTS ke Live API BMKG',
+                      'Evolusi TerraCast: Data Dummy UTS ke Live API Global',
                       style: AppTypography.labelCompact(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -408,15 +411,15 @@ class StationsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Mengintegrasikan Prakiraan Cuaca ADM4 BMKG, BMKG TEWS Seismik, Peringatan Dini Nowcast CAP (XML & Polygon), eksplorasi wilayah Kemendagri 4-tingkat (wilayah.id), peta interaktif OpenStreetMap, serta notifikasi lokal berbasis GetX & Clean Architecture.',
+            'Mengintegrasikan Prakiraan Cuaca & Geocoding Global (Open-Meteo), BMKG TEWS & USGS Gempa Global, Peringatan Dini Nowcast CAP (XML & Polygon), eksplorasi wilayah Kemendagri 4-tingkat (wilayah.id), peta interaktif OpenStreetMap, serta notifikasi lokal berbasis GetX & Clean Architecture.',
             style: AppTypography.bodySm(color: AppColors.onSurfaceVariant)
                 .copyWith(height: 1.45),
           ),
           const SizedBox(height: 10),
-          _buildTechBadge('Live BMKG Cuaca ADM4, TEWS Gempa & Nowcast CAP'),
+          _buildTechBadge('Live Cuaca & Pencarian Kota Global (Open-Meteo)'),
+          _buildTechBadge('BMKG TEWS + USGS Global Gempa & Nowcast CAP'),
           _buildTechBadge('Clean Architecture + GetX + O(1) Strategy Registry'),
-          _buildTechBadge('Peta Interaktif FlutterMap & Polygon Peringatan'),
-          _buildTechBadge('Notifikasi Lokal Android + Cache Offline Persisten'),
+          _buildTechBadge('Peta Interaktif FlutterMap & Deteksi Titik Koordinat'),
         ],
       ),
     );
@@ -445,13 +448,18 @@ class StationsScreen extends StatelessWidget {
   }
 
   RegionEntity _stationToRegion(BmkgStationEntity st) {
+    final isGlobal = st.adm4.startsWith('GLOBAL:');
     final segments = st.adm4.split('.');
     return RegionEntity(
-      adm1: segments.isNotEmpty ? segments[0] : '31',
-      adm2: segments.length >= 2 ? '${segments[0]}.${segments[1]}' : '31.71',
-      adm3: segments.length >= 3
-          ? '${segments[0]}.${segments[1]}.${segments[2]}'
-          : '31.71.03',
+      adm1: isGlobal ? st.adm4 : (segments.isNotEmpty ? segments[0] : '31'),
+      adm2: isGlobal
+          ? st.locationLabel
+          : (segments.length >= 2 ? '${segments[0]}.${segments[1]}' : '31.71'),
+      adm3: isGlobal
+          ? ''
+          : (segments.length >= 3
+              ? '${segments[0]}.${segments[1]}.${segments[2]}'
+              : '31.71.03'),
       adm4: st.adm4,
       provinsi: st.locationLabel,
       kotkab: st.locationLabel,
@@ -459,6 +467,9 @@ class StationsScreen extends StatelessWidget {
       desa: st.locationLabel,
       latitude: st.latitude,
       longitude: st.longitude,
+      country: isGlobal ? st.locationLabel.split(',').last.trim() : 'Indonesia',
+      countryCode: isGlobal ? '' : 'ID',
+      isGlobal: isGlobal,
     );
   }
 }

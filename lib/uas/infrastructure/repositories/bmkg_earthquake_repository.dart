@@ -1,11 +1,12 @@
 import 'dart:convert';
 import '../../adapters/dtos/bmkg_earthquake_dto.dart';
+import '../../adapters/dtos/usgs_earthquake_dto.dart';
 import '../../domain/entities/earthquake_entity.dart';
 import '../../domain/repositories/i_earthquake_repository.dart';
 import '../config/bmkg_api_config.dart';
 import '../http/bmkg_http_client.dart';
 
-/// Fetches live earthquake telemetry feeds from data.bmkg.go.id/DataMKG/TEWS.
+/// Fetches live earthquake telemetry feeds from BMKG TEWS (Indonesia) and USGS (Global).
 class BmkgEarthquakeRepository implements IEarthquakeRepository {
   final BmkgHttpClient _httpClient;
   final BmkgApiConfig _config;
@@ -53,5 +54,19 @@ class BmkgEarthquakeRepository implements IEarthquakeRepository {
     );
     final decoded = json.decode(body) as Map<String, dynamic>;
     return BmkgEarthquakeDto.parseGempaListResponse(decoded);
+  }
+
+  @override
+  Future<List<EarthquakeEntity>> fetchGlobalEarthquakes({
+    bool forceRefresh = false,
+  }) async {
+    final body = await _httpClient.getBody(
+      Uri.parse(_config.usgsGlobalEarthquakeUrl),
+      ttl: _config.seismicCacheTtl,
+      forceRefresh: forceRefresh,
+      acceptHeader: 'application/json',
+    );
+    final decoded = json.decode(body) as Map<String, dynamic>;
+    return UsgsEarthquakeDto.parseFeatureCollection(decoded);
   }
 }

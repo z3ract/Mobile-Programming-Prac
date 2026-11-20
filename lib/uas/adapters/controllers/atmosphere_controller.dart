@@ -2,22 +2,26 @@ import 'package:get/get.dart';
 import '../../domain/entities/region_entity.dart';
 import '../../domain/entities/weather_entity.dart';
 import '../../domain/repositories/i_region_repository.dart';
+import '../../domain/services/i_location_provider.dart';
+import '../../domain/utils/meteorology_calculator.dart';
 import '../../usecases/fetch_weather_forecast_usecase.dart';
 import '../../usecases/manage_saved_regions_usecase.dart';
 import '../../usecases/resolve_gps_region_usecase.dart';
 
-/// Reactive GetX controller orchestrating active region, live BMKG weather, GPS & favorites.
+/// Reactive GetX controller orchestrating active region, live weather, GPS, map selection & favorites.
 class AtmosphereController extends GetxController {
   final FetchWeatherForecastUseCase _fetchWeatherUseCase;
   final ResolveGpsRegionUseCase _resolveGpsUseCase;
   final ManageSavedRegionsUseCase _manageRegionsUseCase;
   final IRegionRepository _regionRepository;
+  final ILocationProvider? _locationProvider;
 
   AtmosphereController({
     required this._fetchWeatherUseCase,
     required this._resolveGpsUseCase,
     required this._manageRegionsUseCase,
     required IRegionRepository regionRepository,
+    this._locationProvider,
   })  : _regionRepository = regionRepository,
         activeRegion = regionRepository.getDefaultRegion().obs;
 
@@ -73,7 +77,7 @@ class AtmosphereController extends GetxController {
       await _manageRegionsUseCase.setActiveRegion(result.region);
     } catch (_) {
       errorMessage.value =
-          'Gagal memuat prakiraan cuaca BMKG. Periksa koneksi internet Anda.';
+          'Gagal memuat prakiraan cuaca Open-Meteo. Periksa koneksi internet Anda.';
     } finally {
       isLoading.value = false;
     }
@@ -84,6 +88,62 @@ class AtmosphereController extends GetxController {
     activeRegion.value = region;
     await _manageRegionsUseCase.setActiveRegion(region);
     await refreshWeather(force: true);
+  }
+
+  Future<RegionEntity> selectCoordinates({
+    required double latitude,
+    required double longitude,
+  }) async {
+    ReverseGeocodeResult? reverse;
+    try {
+      reverse = await _locationProvider?.reverseGeocode(latitude, longitude);
+    } catch (_) {
+      reverse = null;
+    }
+
+    final inIndonesia = MeteorologyCalculator.isWithinIndonesiaBounds(
+      latitude,
+      longitude,
+    );
+    final coordLabel =
+        '${latitude.toStringAsFixed(2)}, ${longitude.toStringAsFixed(2)}';
+    final country = _nonEmptyOrNull(reverse?.countryHint) ??
+        (inIndonesia ? 'Indonesia' : 'Global');
+    final province = _nonEmptyOrNull(reverse?.provinceHint) ?? country;
+    final city = _nonEmptyOrNull(reverse?.cityHint) ??
+        _nonEmptyOrNull(reverse?.provinceHint) ??
+        coordLabel;
+    final title = _nonEmptyOrNull(reverse?.villageHint) ??
+        _nonEmptyOrNull(reverse?.cityHint) ??
+        _nonEmptyOrNull(reverse?.provinceHint) ??
+        'Titik $coordLabel';
+    final countryCode = (reverse?.countryCodeHint ?? '').trim().toUpperCase();
+
+    final entity = RegionEntity(
+      adm1: countryCode.isEmpty ? (inIndonesia ? 'ID' : 'XX') : countryCode,
+      adm2: province,
+      adm3: reverse?.districtHint?.trim() ?? '',
+      adm4: 'COORD:${latitude.toStringAsFixed(3)},${longitude.toStringAsFixed(3)}',
+      provinsi: province,
+      kotkab: city,
+      kecamatan: reverse?.districtHint?.trim() ?? '',
+      desa: title,
+      latitude: latitude,
+      longitude: longitude,
+      timezone: 'auto',
+      isGpsResolved: false,
+      country: country,
+      countryCode: countryCode,
+      isGlobal: !inIndonesia,
+    );
+
+    await selectRegion(entity);
+    return entity;
+  }
+
+  String? _nonEmptyOrNull(String? value) {
+    final trimmed = value?.trim() ?? '';
+    return trimmed.isEmpty ? null : trimmed;
   }
 
   Future<void> detectGpsLocation() async {

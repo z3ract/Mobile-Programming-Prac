@@ -184,7 +184,7 @@ class ThunderstormPolicy implements IWeatherConditionPolicy {
   AlertSeverity get severity => AlertSeverity.danger;
 }
 
-/// O(1) lookup registry translating BMKG weather codes to strategy policies.
+/// O(1) lookup registry translating BMKG and Open-Meteo WMO codes to strategy policies.
 class WeatherCodeRegistry {
   static const Map<int, WeatherConditionCategory> _codeToCategory = {
     0: WeatherConditionCategory.clear,
@@ -195,12 +195,31 @@ class WeatherCodeRegistry {
     5: WeatherConditionCategory.hazeFog,
     10: WeatherConditionCategory.hazeFog,
     45: WeatherConditionCategory.hazeFog,
+    48: WeatherConditionCategory.hazeFog,
+    51: WeatherConditionCategory.lightRain,
+    53: WeatherConditionCategory.lightRain,
+    55: WeatherConditionCategory.lightRain,
+    56: WeatherConditionCategory.lightRain,
+    57: WeatherConditionCategory.lightRain,
     60: WeatherConditionCategory.lightRain,
     61: WeatherConditionCategory.lightRain,
     63: WeatherConditionCategory.heavyRain,
+    65: WeatherConditionCategory.heavyRain,
+    66: WeatherConditionCategory.lightRain,
+    67: WeatherConditionCategory.heavyRain,
+    71: WeatherConditionCategory.lightRain,
+    73: WeatherConditionCategory.lightRain,
+    75: WeatherConditionCategory.heavyRain,
+    77: WeatherConditionCategory.lightRain,
     80: WeatherConditionCategory.lightRain,
+    81: WeatherConditionCategory.lightRain,
+    82: WeatherConditionCategory.heavyRain,
+    85: WeatherConditionCategory.lightRain,
+    86: WeatherConditionCategory.heavyRain,
     95: WeatherConditionCategory.thunderstorm,
+    96: WeatherConditionCategory.thunderstorm,
     97: WeatherConditionCategory.thunderstorm,
+    99: WeatherConditionCategory.thunderstorm,
   };
 
   static const Map<WeatherConditionCategory, IWeatherConditionPolicy>
@@ -225,7 +244,7 @@ class WeatherCodeRegistry {
       category: WeatherConditionCategory.heavyRain,
     ),
     (
-      keywords: ['hujan', 'rain', 'gerimis', 'shower'],
+      keywords: ['hujan', 'rain', 'gerimis', 'shower', 'salju', 'snow', 'drizzle'],
       category: WeatherConditionCategory.lightRain,
     ),
     (

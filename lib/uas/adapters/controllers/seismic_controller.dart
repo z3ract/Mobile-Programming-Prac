@@ -5,7 +5,7 @@ import '../../domain/repositories/i_earthquake_repository.dart';
 import '../../domain/utils/meteorology_calculator.dart';
 import 'atmosphere_controller.dart';
 
-/// Reactive GetX controller for BMKG TEWS earthquake feeds, filtering, and epicentre distances.
+/// Reactive GetX controller for BMKG TEWS (Indonesia) and USGS (Global) earthquake feeds.
 class SeismicController extends GetxController {
   final IEarthquakeRepository _earthquakeRepository;
   final AtmosphereController _atmosphereController;
@@ -20,9 +20,11 @@ class SeismicController extends GetxController {
   final Rxn<EarthquakeEntity> autoGempa = Rxn<EarthquakeEntity>();
   final RxList<EarthquakeEntity> gempaTerkini = <EarthquakeEntity>[].obs;
   final RxList<EarthquakeEntity> gempaDirasakan = <EarthquakeEntity>[].obs;
+  final RxList<EarthquakeEntity> gempaGlobal = <EarthquakeEntity>[].obs;
   final RxString searchQuery = ''.obs;
   final RxBool isLoading = false.obs;
   final RxnString errorMessage = RxnString();
+  final RxnString globalErrorMessage = RxnString();
 
   @override
   void onInit() {
@@ -33,7 +35,17 @@ class SeismicController extends GetxController {
   Future<void> refreshAll({bool force = false}) async {
     isLoading.value = true;
     errorMessage.value = null;
+    globalErrorMessage.value = null;
 
+    await Future.wait([
+      _refreshBmkg(force: force),
+      _refreshGlobal(force: force),
+    ]);
+
+    isLoading.value = false;
+  }
+
+  Future<void> _refreshBmkg({required bool force}) async {
     try {
       final results = await Future.wait([
         _earthquakeRepository.fetchAutoGempa(forceRefresh: force),
@@ -47,8 +59,18 @@ class SeismicController extends GetxController {
     } catch (_) {
       errorMessage.value =
           'Gagal memuat data seismik BMKG TEWS. Periksa koneksi Anda.';
-    } finally {
-      isLoading.value = false;
+    }
+  }
+
+  Future<void> _refreshGlobal({required bool force}) async {
+    try {
+      final global = await _earthquakeRepository.fetchGlobalEarthquakes(
+        forceRefresh: force,
+      );
+      gempaGlobal.assignAll(global);
+    } catch (_) {
+      globalErrorMessage.value =
+          'Gagal memuat data gempa global USGS. Periksa koneksi Anda.';
     }
   }
 
@@ -66,6 +88,9 @@ class SeismicController extends GetxController {
 
   List<EarthquakeEntity> get filteredGempaDirasakan =>
       _filterList(gempaDirasakan);
+
+  List<EarthquakeEntity> get filteredGempaGlobal =>
+      _filterList(gempaGlobal);
 
   double? distanceFromActiveRegionKm(EarthquakeEntity quake) {
     final lat = quake.latitude;

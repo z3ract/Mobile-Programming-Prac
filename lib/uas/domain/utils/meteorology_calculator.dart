@@ -4,6 +4,25 @@ import 'dart:math' as math;
 class MeteorologyCalculator {
   static const double _earthRadiusKm = 6371.0;
 
+  static const List<String> _compass16 = [
+    'N',
+    'NNE',
+    'NE',
+    'ENE',
+    'E',
+    'ESE',
+    'SE',
+    'SSE',
+    'S',
+    'SSW',
+    'SW',
+    'WSW',
+    'W',
+    'WNW',
+    'NW',
+    'NNW',
+  ];
+
   static const Map<String, String> _windDirectionMap = {
     'N': 'Utara',
     'NNE': 'Utara Timur Laut',
@@ -90,6 +109,13 @@ class MeteorologyCalculator {
     return _windDirectionMap[normalized] ??
         (normalized.isEmpty ? 'Tidak diketahui' : normalized);
   }
+
+  /// Maps wind azimuth degrees (0..360) to 16-point compass code in O(1) time.
+  static String degreeToWindCode(int degrees) =>
+      _compass16[((((degrees % 360) + 360) % 360) / 22.5).round() % 16];
+
+  /// Computes the opposite outflow compass code from incoming azimuth degrees.
+  static String oppositeWindCode(int degrees) => degreeToWindCode(degrees + 180);
 
   static double _toRadians(double degrees) => degrees * (math.pi / 180.0);
 }

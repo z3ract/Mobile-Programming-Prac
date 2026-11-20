@@ -57,6 +57,8 @@ class GeolocatorLocationProvider implements ILocationProvider {
         cityHint: place.subAdministrativeArea ?? place.locality,
         districtHint: place.subLocality,
         villageHint: place.locality ?? place.name,
+        countryHint: place.country,
+        countryCodeHint: place.isoCountryCode,
       );
     } catch (e) {
       debugPrint('Reverse geocode notice: $e');

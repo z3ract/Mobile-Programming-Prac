@@ -30,7 +30,7 @@ class _SeismicScreenState extends State<SeismicScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -69,7 +69,7 @@ class _SeismicScreenState extends State<SeismicScreen>
                         Obx(() {
                           final region = atmosphereCtrl.activeRegion.value;
                           return Text(
-                            'BMKG TEWS · Jarak diukur dari ${region.displayTitle}',
+                            'BMKG TEWS & USGS Global · Jarak dari ${region.displayTitle}',
                             style: AppTypography.bodySm(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -178,8 +178,9 @@ class _SeismicScreenState extends State<SeismicScreen>
                   fontWeight: FontWeight.w600,
                 ),
                 tabs: const [
-                  Tab(text: 'Magnitudo 5.0+'),
-                  Tab(text: 'Dirasakan (MMI)'),
+                  Tab(text: 'BMKG M5.0+'),
+                  Tab(text: 'Dirasakan'),
+                  Tab(text: 'Global (USGS)'),
                 ],
               ),
             ),
@@ -191,14 +192,23 @@ class _SeismicScreenState extends State<SeismicScreen>
                   _buildListTab(
                     seismicCtrl: seismicCtrl,
                     atmosphereCtrl: atmosphereCtrl,
-                    config: config,
+                    attributionText: config.bmkgAttribution,
+                    errorSelector: () => seismicCtrl.errorMessage.value,
                     listSelector: () => seismicCtrl.filteredGempaTerkini,
                   ),
                   _buildListTab(
                     seismicCtrl: seismicCtrl,
                     atmosphereCtrl: atmosphereCtrl,
-                    config: config,
+                    attributionText: config.bmkgAttribution,
+                    errorSelector: () => seismicCtrl.errorMessage.value,
                     listSelector: () => seismicCtrl.filteredGempaDirasakan,
+                  ),
+                  _buildListTab(
+                    seismicCtrl: seismicCtrl,
+                    atmosphereCtrl: atmosphereCtrl,
+                    attributionText: config.usgsAttribution,
+                    errorSelector: () => seismicCtrl.globalErrorMessage.value,
+                    listSelector: () => seismicCtrl.filteredGempaGlobal,
                   ),
                 ],
               ),
@@ -237,20 +247,20 @@ class _SeismicScreenState extends State<SeismicScreen>
   Widget _buildListTab({
     required SeismicController seismicCtrl,
     required AtmosphereController atmosphereCtrl,
-    required BmkgApiConfig config,
+    required String attributionText,
+    required String? Function() errorSelector,
     required List<EarthquakeEntity> Function() listSelector,
   }) {
     return Obx(() {
-      if (seismicCtrl.isLoading.value &&
-          seismicCtrl.gempaTerkini.isEmpty &&
-          seismicCtrl.gempaDirasakan.isEmpty) {
+      final list = listSelector();
+      if (seismicCtrl.isLoading.value && list.isEmpty) {
         return const Center(
           child: CircularProgressIndicator(color: AppColors.onSurface),
         );
       }
 
       final activeRegion = atmosphereCtrl.activeRegion.value;
-      final list = listSelector();
+      final errorMsg = errorSelector();
 
       if (list.isEmpty) {
         return Center(
@@ -266,8 +276,7 @@ class _SeismicScreenState extends State<SeismicScreen>
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  seismicCtrl.errorMessage.value ??
-                      'Tidak ditemukan data gempa yang sesuai.',
+                  errorMsg ?? 'Tidak ditemukan data gempa yang sesuai.',
                   textAlign: TextAlign.center,
                   style: AppTypography.bodyMd(
                     color: AppColors.onSurfaceVariant,
@@ -293,9 +302,7 @@ class _SeismicScreenState extends State<SeismicScreen>
             if (index == list.length) {
               return Padding(
                 padding: const EdgeInsets.only(top: 6),
-                child: BmkgAttributionFooter(
-                  attributionText: config.bmkgAttribution,
-                ),
+                child: BmkgAttributionFooter(attributionText: attributionText),
               );
             }
 
@@ -389,13 +396,44 @@ class _SeismicScreenState extends State<SeismicScreen>
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 5),
-                    Text(
-                      '${gempa.tanggal} · ${gempa.jam}',
-                      style: AppTypography.tabularSm(
-                        color: AppColors.onSurfaceMuted,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: (gempa.isGlobalSource
+                                    ? AppColors.primary
+                                    : AppColors.secondary)
+                                .withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            gempa.source,
+                            style: AppTypography.labelCompact(
+                              color: gempa.isGlobalSource
+                                  ? AppColors.primary
+                                  : AppColors.secondary,
+                            ).copyWith(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '${gempa.tanggal} · ${gempa.jam}',
+                            style: AppTypography.tabularSm(
+                              color: AppColors.onSurfaceMuted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

@@ -16,6 +16,9 @@ class RegionDto {
       'longitude': entity.longitude,
       'timezone': entity.timezone,
       'isGpsResolved': entity.isGpsResolved,
+      'country': entity.country,
+      'countryCode': entity.countryCode,
+      'isGlobal': entity.isGlobal,
     };
   }
 
@@ -33,6 +36,9 @@ class RegionDto {
       longitude: (map['longitude'] as num?)?.toDouble() ?? 106.8451,
       timezone: map['timezone']?.toString() ?? 'Asia/Jakarta',
       isGpsResolved: map['isGpsResolved'] == true,
+      country: map['country']?.toString() ?? 'Indonesia',
+      countryCode: map['countryCode']?.toString() ?? 'ID',
+      isGlobal: map['isGlobal'] == true,
     );
   }
 }

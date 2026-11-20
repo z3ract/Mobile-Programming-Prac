@@ -19,7 +19,7 @@ import '../../infrastructure/config/bmkg_api_config.dart';
 import '../../infrastructure/http/bmkg_http_client.dart';
 import '../../infrastructure/repositories/bmkg_earthquake_repository.dart';
 import '../../infrastructure/repositories/bmkg_nowcast_repository.dart';
-import '../../infrastructure/repositories/bmkg_weather_repository.dart';
+import '../../infrastructure/repositories/open_meteo_weather_repository.dart';
 import '../../infrastructure/repositories/shared_prefs_storage_repository.dart';
 import '../../infrastructure/repositories/wilayah_region_repository.dart';
 import '../../infrastructure/services/geolocator_location_provider.dart';
@@ -63,7 +63,7 @@ class UasBinding extends Bindings {
     Get.put<BmkgHttpClient>(httpClient, permanent: true);
 
     final weatherRepo = weatherRepositoryOverride ??
-        BmkgWeatherRepository(httpClient: httpClient, config: config);
+        OpenMeteoWeatherRepository(httpClient: httpClient, config: config);
     final earthquakeRepo = earthquakeRepositoryOverride ??
         BmkgEarthquakeRepository(httpClient: httpClient, config: config);
     final nowcastRepo = nowcastRepositoryOverride ??
@@ -113,6 +113,7 @@ class UasBinding extends Bindings {
         resolveGpsUseCase: resolveGpsUseCase,
         manageRegionsUseCase: manageRegionsUseCase,
         regionRepository: regionRepo,
+        locationProvider: locationProvider,
       ),
       permanent: true,
     );

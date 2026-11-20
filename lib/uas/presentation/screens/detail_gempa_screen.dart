@@ -197,7 +197,11 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
                     const SizedBox(height: 18),
                     _buildSafetyCard(),
                     const SizedBox(height: 16),
-                    BmkgAttributionFooter(attributionText: config.bmkgAttribution),
+                    BmkgAttributionFooter(
+                      attributionText: gempa.isGlobalSource
+                          ? config.usgsAttribution
+                          : config.bmkgAttribution,
+                    ),
                   ],
                 ),
               ),
@@ -231,7 +235,9 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
                   border: Border.all(color: magColor.withValues(alpha: 0.45)),
                 ),
                 child: Text(
-                  'Magnitudo ${gempa.magnitude} SR',
+                  gempa.isGlobalSource
+                      ? 'USGS M ${gempa.magnitude}'
+                      : 'Magnitudo ${gempa.magnitude} SR',
                   style: AppTypography.tabularSm(color: magColor).copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
@@ -538,7 +544,7 @@ class _DetailGempaScreenState extends State<DetailGempaScreen> {
             '3. Jika berada di luar gedung, jauhi tiang listrik, baliho, dan lereng tebing.',
           ),
           _buildSafetyTip(
-            '4. Ikuti informasi resmi dari BMKG dan jangan terpengaruh kabar hoaks.',
+            '4. Ikuti informasi resmi dari BMKG atau USGS dan jangan terpengaruh kabar hoaks.',
           ),
         ],
       ),

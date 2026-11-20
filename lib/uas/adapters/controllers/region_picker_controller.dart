@@ -1,10 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../domain/entities/region_entity.dart';
 import '../../domain/repositories/i_region_repository.dart';
 import 'atmosphere_controller.dart';
 
-/// Reactive GetX controller handling Indonesian city search and 4-level wilayah.id cascade.
+/// Reactive GetX controller handling global geocoding search, curated presets,
+/// and 4-level Indonesian wilayah.id cascade.
 class RegionPickerController extends GetxController {
   final IRegionRepository _regionRepository;
   final AtmosphereController _atmosphereController;
@@ -16,6 +18,10 @@ class RegionPickerController extends GetxController {
 
   final TextEditingController quickSearchController = TextEditingController();
   final RxString quickSearchQuery = ''.obs;
+  final RxList<RegionEntity> globalSearchResults = <RegionEntity>[].obs;
+  final RxBool isSearchingGlobal = false.obs;
+  final RxnString globalSearchError = RxnString();
+  Timer? _searchDebounce;
 
   final RxList<AdminAreaOption> provinces = <AdminAreaOption>[].obs;
   final RxList<AdminAreaOption> regencies = <AdminAreaOption>[].obs;
@@ -36,12 +42,55 @@ class RegionPickerController extends GetxController {
   }
 
   void updateQuickSearch(String value) {
-    quickSearchQuery.value = value.trim().toLowerCase();
+    final normalized = value.trim().toLowerCase();
+    quickSearchQuery.value = normalized;
+    _searchDebounce?.cancel();
+
+    if (normalized.length < 2) {
+      globalSearchResults.clear();
+      globalSearchError.value = null;
+      isSearchingGlobal.value = false;
+      return;
+    }
+
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 380),
+      searchGlobalNow,
+    );
   }
 
   void clearQuickSearch() {
+    _searchDebounce?.cancel();
     quickSearchController.clear();
     quickSearchQuery.value = '';
+    globalSearchResults.clear();
+    globalSearchError.value = null;
+    isSearchingGlobal.value = false;
+  }
+
+  Future<void> searchGlobalNow() async {
+    final queryText = quickSearchController.text.trim().isNotEmpty
+        ? quickSearchController.text.trim()
+        : quickSearchQuery.value;
+    if (queryText.length < 2) return;
+
+    final expectedQuery = queryText.toLowerCase();
+    isSearchingGlobal.value = true;
+    globalSearchError.value = null;
+
+    try {
+      final results = await _regionRepository.searchGlobalRegions(queryText);
+      if (quickSearchQuery.value != expectedQuery) return;
+      globalSearchResults.assignAll(results);
+    } catch (_) {
+      if (quickSearchQuery.value != expectedQuery) return;
+      globalSearchError.value =
+          'Gagal mencari lokasi dunia via Open-Meteo Geocoding.';
+    } finally {
+      if (quickSearchQuery.value == expectedQuery) {
+        isSearchingGlobal.value = false;
+      }
+    }
   }
 
   List<RegionEntity> get filteredPresets {
@@ -54,7 +103,8 @@ class RegionPickerController extends GetxController {
           region.kecamatan.toLowerCase().contains(query) ||
           region.kotkab.toLowerCase().contains(query) ||
           region.provinsi.toLowerCase().contains(query) ||
-          region.adm4.contains(query);
+          region.country.toLowerCase().contains(query) ||
+          region.adm4.toLowerCase().contains(query);
     }).toList();
   }
 
@@ -133,6 +183,24 @@ class RegionPickerController extends GetxController {
     final district = selectedDistrict.value;
     final currentFallback = _atmosphereController.activeRegion.value;
 
+    double resolvedLat = currentFallback.latitude;
+    double resolvedLon = currentFallback.longitude;
+    try {
+      final matches = await _regionRepository.searchGlobalRegions(
+        '${village.name} ${regency?.name ?? ''}'.trim(),
+      );
+      final idMatch = matches.where((r) => r.countryCode == 'ID').toList();
+      final chosen = idMatch.isNotEmpty
+          ? idMatch.first
+          : (matches.isNotEmpty ? matches.first : null);
+      if (chosen != null) {
+        resolvedLat = chosen.latitude;
+        resolvedLon = chosen.longitude;
+      }
+    } catch (_) {
+      // Fallback safely to current coordinates if geocoding lookup fails.
+    }
+
     final newRegion = RegionEntity(
       adm1: province?.code ?? currentFallback.adm1,
       adm2: regency?.code ?? currentFallback.adm2,
@@ -142,8 +210,11 @@ class RegionPickerController extends GetxController {
       kotkab: regency?.name ?? currentFallback.kotkab,
       kecamatan: district?.name ?? currentFallback.kecamatan,
       desa: village.name,
-      latitude: currentFallback.latitude,
-      longitude: currentFallback.longitude,
+      latitude: resolvedLat,
+      longitude: resolvedLon,
+      country: 'Indonesia',
+      countryCode: 'ID',
+      isGlobal: false,
     );
 
     await _atmosphereController.selectRegion(newRegion);
@@ -151,6 +222,7 @@ class RegionPickerController extends GetxController {
 
   @override
   void onClose() {
+    _searchDebounce?.cancel();
     quickSearchController.dispose();
     super.onClose();
   }
