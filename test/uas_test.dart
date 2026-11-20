@@ -22,6 +22,7 @@ import 'package:master_repo/uas/infrastructure/parsers/bmkg_cap_xml_parser.dart'
 import 'package:master_repo/uas/main.dart';
 import 'package:master_repo/uas/presentation/bindings/uas_binding.dart';
 import 'package:master_repo/uas/presentation/theme/atmosphere_theme_strategy.dart';
+import 'package:master_repo/uas/presentation/widgets/smooth_slide_indexed_stack.dart';
 import 'package:master_repo/uas/usecases/evaluate_weather_alerts_usecase.dart';
 import 'package:master_repo/uas/usecases/resolve_gps_region_usecase.dart';
 
@@ -416,6 +417,62 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('Jaringan Stasiun BMKG'), findsOneWidget);
         expect(find.text('Proyek UAS Praktikum Mobile'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'SmoothSlideIndexedStack glides tabs horizontally with ease-in-ease-out and offstages inactive tabs',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final testBinding = UasBinding(
+          configOverride: const BmkgApiConfig(osmTileTemplate: ''),
+          weatherRepositoryOverride: _FakeWeatherRepository(),
+          earthquakeRepositoryOverride: _FakeEarthquakeRepository(),
+          nowcastRepositoryOverride: _FakeNowcastRepository(),
+          regionRepositoryOverride: _FakeRegionRepository(),
+          storageRepositoryOverride: _FakeStorageRepository(),
+          locationProviderOverride: _FakeLocationProvider(),
+          notificationDispatcherOverride: _FakeNotificationDispatcher(),
+        );
+
+        await tester.pumpWidget(
+          TerraCastUasApp(
+            customBinding: testBinding,
+            enableAmbientMotion: false,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SmoothSlideIndexedStack), findsOneWidget);
+        expect(find.text('30'), findsOneWidget);
+        final double initialTempX = tester.getTopLeft(find.text('30')).dx;
+
+        await tester.tap(find.text('Seismik'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 160));
+
+        // Mid-slide: outgoing tab slides left and incoming tab enters from right.
+        expect(find.text('30'), findsOneWidget);
+        expect(find.text('Aktivitas Seismik'), findsOneWidget);
+        expect(tester.getTopLeft(find.text('30')).dx, lessThan(initialTempX));
+        expect(
+          tester.getTopLeft(find.text('Aktivitas Seismik')).dx,
+          greaterThan(50),
+        );
+
+        await tester.pumpAndSettle();
+        expect(find.text('Aktivitas Seismik'), findsOneWidget);
+        expect(find.text('30'), findsNothing);
+
+        // Reverse direction: return left to Cuaca tab.
+        await tester.tap(find.text('Cuaca'));
+        await tester.pumpAndSettle();
+        expect(find.text('30'), findsOneWidget);
+        expect(find.text('Aktivitas Seismik'), findsNothing);
       },
     );
   });

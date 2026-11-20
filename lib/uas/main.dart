@@ -14,7 +14,9 @@ import 'presentation/screens/weather_home_screen.dart';
 import 'presentation/theme/app_colors.dart';
 import 'presentation/theme/app_typography.dart';
 import 'presentation/theme/atmosphere_theme_strategy.dart';
+import 'presentation/theme/smooth_slide_page_transition.dart';
 import 'presentation/widgets/sky_atmosphere_background.dart';
+import 'presentation/widgets/smooth_slide_indexed_stack.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,6 +67,12 @@ class TerraCastUasApp extends StatelessWidget {
           secondary: AppColors.secondary,
           surface: AppColors.surfaceContainer,
         ),
+        pageTransitionsTheme: PageTransitionsTheme(
+          builders: {
+            for (final platform in TargetPlatform.values)
+              platform: const SmoothSlidePageTransitionsBuilder(),
+          },
+        ),
         useMaterial3: true,
       ),
       home: MainUasShell(enableAmbientMotion: enableAmbientMotion),
@@ -89,6 +97,7 @@ class _MainUasShellState extends State<MainUasShell> {
   int _currentIndex = 0;
 
   void _onTabSelected(int index) {
+    if (_currentIndex == index) return;
     setState(() {
       _currentIndex = index;
     });
@@ -126,7 +135,10 @@ class _MainUasShellState extends State<MainUasShell> {
         return SkyAtmosphereBackground(
           visualTheme: visualTheme,
           enableMotion: widget.enableAmbientMotion,
-          child: IndexedStack(index: _currentIndex, children: screens),
+          child: SmoothSlideIndexedStack(
+            index: _currentIndex,
+            children: screens,
+          ),
         );
       }),
       bottomNavigationBar: _buildFloatingGlassNav(alertCtrl),
